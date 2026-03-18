@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/jchantrell/ekko/compare/v0.1.0...v0.2.0) (2026-03-18)
+
+
+### Features
+
+* support podman as container runtime ([ec58c63](https://github.com/jchantrell/ekko/commit/ec58c63407e1f4bbaa7c65a92771bcae38a1fa94))
+
+
+### Bug Fixes
+
+* install to ~/.local/bin, no sudo required ([b8e5225](https://github.com/jchantrell/ekko/commit/b8e5225f9b1ee0e644025545d01b9b1353d33343))
+* use sudo for chmod in install script ([0f225ce](https://github.com/jchantrell/ekko/commit/0f225ce0e6e96a3cee4e04ef8da0d0d85e574183))
+
 ## 0.1.0 (2026-03-18)
 
 
