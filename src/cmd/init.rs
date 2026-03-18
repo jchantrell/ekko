@@ -5,7 +5,7 @@ use crate::config::Config;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Backend {
-    Docker,
+    Container,
     Uv,
 }
 
@@ -21,7 +21,7 @@ pub async fn run(backend: Option<Backend>) -> Result<()> {
     };
 
     match backend {
-        Backend::Docker => init_docker().await?,
+        Backend::Container => init_container().await?,
         Backend::Uv => init_uv().await?,
     }
 
@@ -38,7 +38,7 @@ pub async fn run(backend: Option<Backend>) -> Result<()> {
 fn detect_backend() -> Result<Backend> {
     if container_runtime().is_some() {
         println!("Detected container runtime. Using container backend.");
-        Ok(Backend::Docker)
+        Ok(Backend::Container)
     } else if which("uv") {
         println!("No container runtime found. Using uv/Python backend.");
         Ok(Backend::Uv)
@@ -63,7 +63,7 @@ fn container_runtime() -> Option<&'static str> {
     }
 }
 
-async fn init_docker() -> Result<()> {
+async fn init_container() -> Result<()> {
     let runtime = container_runtime().context("no container runtime found")?;
     println!("Setting up Graphiti via {runtime}...");
 
