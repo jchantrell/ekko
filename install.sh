@@ -3,7 +3,7 @@ set -e
 
 REPO="jchantrell/ekko"
 BINARY="ekko"
-INSTALL_DIR="${EKKO_INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${EKKO_INSTALL_DIR:-$HOME/.local/bin}"
 
 main() {
     os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -45,13 +45,9 @@ main() {
     src="${tmpdir}/${BINARY}-${version}-${target}/${BINARY}"
     dst="${INSTALL_DIR}/${BINARY}"
 
-    if [ -w "$INSTALL_DIR" ]; then
-        cp "$src" "$dst"
-        chmod +x "$dst"
-    else
-        echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-        sudo install -m 755 "$src" "$dst"
-    fi
+    mkdir -p "$INSTALL_DIR"
+    cp "$src" "$dst"
+    chmod +x "$dst"
 
     echo "Installed ${BINARY} ${version} to ${dst}"
 }
