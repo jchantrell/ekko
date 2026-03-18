@@ -67,11 +67,8 @@ jobs:
           version="${{ needs.release-please.outputs.version }}"
           archive="ekko-v${version}-${{ matrix.target }}"
 
-          mkdir -p "$archive"
-          cp "target/${{ matrix.target }}/release/ekko" "$archive/"
-          cp VISION.md "$archive/" 2>/dev/null || true
-
-          tar czf "${archive}.tar.gz" "$archive"
+          # self_update expects the binary at the archive root
+          tar czf "${archive}.tar.gz" -C "target/${{ matrix.target }}/release" ekko
           shasum -a 256 "${archive}.tar.gz" > "${archive}.tar.gz.sha256"
 
           echo "ASSET=${archive}.tar.gz" >> $GITHUB_ENV
