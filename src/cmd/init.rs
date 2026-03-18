@@ -36,23 +36,36 @@ pub async fn run(backend: Option<Backend>) -> Result<()> {
 }
 
 fn detect_backend() -> Result<Backend> {
-    if which("docker") {
-        println!("Detected Docker. Using Docker backend.");
+    if container_runtime().is_some() {
+        println!("Detected container runtime. Using container backend.");
         Ok(Backend::Docker)
     } else if which("uv") {
-        println!("No Docker found. Using uv/Python backend.");
+        println!("No container runtime found. Using uv/Python backend.");
         Ok(Backend::Uv)
     } else {
         bail!(
-            "Neither Docker nor uv found.\n\
+            "No container runtime (docker/podman) or uv found.\n\
              Install Docker: https://docs.docker.com/get-docker/\n\
+             Install Podman: https://podman.io/docs/installation\n\
              Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
         );
     }
 }
 
+/// Returns the container runtime command ("docker" or "podman"), if available.
+fn container_runtime() -> Option<&'static str> {
+    if which("docker") {
+        Some("docker")
+    } else if which("podman") {
+        Some("podman")
+    } else {
+        None
+    }
+}
+
 async fn init_docker() -> Result<()> {
-    println!("Setting up Graphiti via Docker...");
+    let runtime = container_runtime().context("no container runtime found")?;
+    println!("Setting up Graphiti via {runtime}...");
 
     let data_dir = Config::data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
@@ -66,27 +79,27 @@ async fn init_docker() -> Result<()> {
         .context("failed to write graphiti-config.yaml")?;
 
     println!("  Pulling images...");
-    let output = Command::new("docker")
+    let output = Command::new(runtime)
         .current_dir(&data_dir)
         .args(["compose", "pull"])
         .output()
-        .context("failed to run docker compose pull")?;
+        .with_context(|| format!("failed to run {runtime} compose pull"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("docker compose pull failed: {stderr}");
+        bail!("{runtime} compose pull failed: {stderr}");
     }
 
     println!("  Starting services...");
-    let output = Command::new("docker")
+    let output = Command::new(runtime)
         .current_dir(&data_dir)
         .args(["compose", "up", "-d"])
         .output()
-        .context("failed to run docker compose up")?;
+        .with_context(|| format!("failed to run {runtime} compose up"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("docker compose up failed: {stderr}");
+        bail!("{runtime} compose up failed: {stderr}");
     }
 
     println!("  Graphiti + FalkorDB started.");
