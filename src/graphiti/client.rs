@@ -81,10 +81,10 @@ impl Client {
             ACCEPT,
             HeaderValue::from_static("application/json, text/event-stream"),
         );
-        if let Some(ref sid) = self.session_id {
-            if let Ok(val) = HeaderValue::from_str(sid) {
-                headers.insert(MCP_SESSION_HEADER, val);
-            }
+        if let Some(ref sid) = self.session_id
+            && let Ok(val) = HeaderValue::from_str(sid)
+        {
+            headers.insert(MCP_SESSION_HEADER, val);
         }
         headers
     }
