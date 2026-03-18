@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/jchantrell/ekko/compare/v0.2.0...v0.2.1) (2026-03-18)
+
+
+### Bug Fixes
+
+* package binary at archive root for self-update ([b6cf661](https://github.com/jchantrell/ekko/commit/b6cf661fd21ed3783cb6f39057c05be547294366))
+
 ## [0.2.0](https://github.com/jchantrell/ekko/compare/v0.1.0...v0.2.0) (2026-03-18)
 
 
