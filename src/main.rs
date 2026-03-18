@@ -28,6 +28,13 @@ enum Commands {
 
     /// Show Graphiti connection status
     Status,
+
+    /// Update ekko to the latest version
+    Update {
+        /// Only check for updates, don't install
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[tokio::main]
@@ -45,5 +52,6 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Doctor => cmd::doctor::run().await,
         Commands::Status => cmd::status::run().await,
+        Commands::Update { check } => cmd::update::run(check).await,
     }
 }
