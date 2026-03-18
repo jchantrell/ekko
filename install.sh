@@ -42,15 +42,18 @@ main() {
     curl -fsSL "$url" -o "${tmpdir}/${archive}"
     tar xzf "${tmpdir}/${archive}" -C "$tmpdir"
 
+    src="${tmpdir}/${BINARY}-${version}-${target}/${BINARY}"
+    dst="${INSTALL_DIR}/${BINARY}"
+
     if [ -w "$INSTALL_DIR" ]; then
-        cp "${tmpdir}/${BINARY}-${version}-${target}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+        cp "$src" "$dst"
+        chmod +x "$dst"
     else
         echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-        sudo cp "${tmpdir}/${BINARY}-${version}-${target}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+        sudo install -m 755 "$src" "$dst"
     fi
 
-    chmod +x "${INSTALL_DIR}/${BINARY}"
-    echo "Installed ${BINARY} ${version} to ${INSTALL_DIR}/${BINARY}"
+    echo "Installed ${BINARY} ${version} to ${dst}"
 }
 
 main
