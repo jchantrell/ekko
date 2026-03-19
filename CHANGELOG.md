@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/jchantrell/ekko/compare/v0.5.3...v0.6.0) (2026-03-19)
+
+
+### Features
+
+* auto-detect group from cwd in clear command ([918543d](https://github.com/jchantrell/ekko/commit/918543d80748fb43cb7ca8aceba8941ea5dc4a54))
+
 ## [0.5.3](https://github.com/jchantrell/ekko/compare/v0.5.2...v0.5.3) (2026-03-19)
 
 
