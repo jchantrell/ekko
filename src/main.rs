@@ -1,6 +1,8 @@
 mod cmd;
 mod config;
 mod graphiti;
+mod mcp;
+mod project;
 
 use clap::{Parser, Subcommand};
 
@@ -15,6 +17,9 @@ struct Cli {
 enum Commands {
     /// Initialize ekko (set up Graphiti + FalkorDB via docker/podman, pull Ollama models)
     Init,
+
+    /// Start the MCP server over STDIO
+    Serve,
 
     /// Health check all services
     Doctor,
@@ -36,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Init => cmd::init::run().await,
+        Commands::Serve => cmd::serve::run().await,
         Commands::Doctor => cmd::doctor::run().await,
         Commands::Status => cmd::status::run().await,
         Commands::Update { check } => cmd::update::run(check).await,
