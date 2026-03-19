@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/jchantrell/ekko/compare/v0.5.0...v0.5.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* collapse nested if to satisfy clippy ([a65d655](https://github.com/jchantrell/ekko/commit/a65d655bd865d1debd41a86c77fed2840541e4c8))
+
 ## [0.5.0](https://github.com/jchantrell/ekko/compare/v0.4.0...v0.5.0) (2026-03-19)
 
 
