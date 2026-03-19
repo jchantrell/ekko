@@ -47,7 +47,7 @@ async fn init_container(runtime: &str) -> Result<()> {
     std::fs::create_dir_all(&data_dir)?;
 
     let compose_path = data_dir.join("docker-compose.yml");
-    std::fs::write(&compose_path, compose_content())
+    std::fs::write(&compose_path, compose_content(runtime))
         .context("failed to write docker-compose.yml")?;
 
     let graphiti_config_path = data_dir.join("graphiti-config.yaml");
@@ -168,8 +168,23 @@ database:
     )
 }
 
-fn compose_content() -> &'static str {
-    r#"services:
+fn compose_content(runtime: &str) -> String {
+    let ollama_host = if runtime == "podman" {
+        "host.containers.internal"
+    } else {
+        "host.docker.internal"
+    };
+
+    // For docker, we need extra_hosts to resolve the alias.
+    // Podman resolves host.containers.internal automatically.
+    let extra_hosts = if runtime == "docker" {
+        "\n    extra_hosts:\n      - \"host.docker.internal:host-gateway\""
+    } else {
+        ""
+    };
+
+    format!(
+        r#"services:
   falkordb:
     image: docker.io/falkordb/falkordb:latest
     ports:
@@ -190,19 +205,20 @@ fn compose_content() -> &'static str {
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=ollama
+      - OPENAI_BASE_URL=http://{ollama_host}:11434/v1
       - FALKORDB_URI=redis://falkordb:6379
       - FALKORDB_DATABASE=default_db
       - MODEL_NAME=llama3.2:3b
+      - EMBEDDING_MODEL=nomic-embed-text
       - SEMAPHORE_LIMIT=10
     volumes:
       - ./graphiti-config.yaml:/app/mcp/config/config.yaml:ro
     depends_on:
       falkordb:
-        condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+        condition: service_healthy{extra_hosts}
 
 volumes:
   falkordb_data:
 "#
+    )
 }
