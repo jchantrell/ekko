@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/jchantrell/ekko/compare/v0.4.0...v0.5.0) (2026-03-19)
+
+
+### Features
+
+* add global memory support via _global group_id ([321d4a1](https://github.com/jchantrell/ekko/commit/321d4a1f03b3daea088be32a8f375a5ba44e1c7b))
+* add rm subcommands for facts and episodes ([2bf3f97](https://github.com/jchantrell/ekko/commit/2bf3f975004ce10369eab25fe69a2f9a466a09c3))
+
 ## [0.4.0](https://github.com/jchantrell/ekko/compare/v0.3.0...v0.4.0) (2026-03-19)
 
 
