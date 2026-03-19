@@ -99,7 +99,7 @@ ekko does NOT duplicate what Graphiti already does. No custom entity extraction.
 | **MCP server for coding agents** | Graphiti has an MCP server, but its tools are generic. ekko's tools are designed for agent workflows (remember/recall/forget semantics, project-aware context). |
 | **Session indexing** | Graphiti doesn't know where Claude Code or Cursor store their sessions. ekko discovers, parses, summarizes, and feeds them as episodes. |
 | **CLI** | Graphiti has no CLI. ekko provides terminal-based inspection, search, and maintenance. |
-| **Lifecycle management** | `ekko init` sets up Graphiti (container or uv), configures Ollama, runs health checks. `ekko doctor` diagnoses issues. |
+| **Lifecycle management** | `ekko init` sets up Graphiti + FalkorDB via container runtime (docker/podman), configures Ollama, runs health checks. `ekko doctor` diagnoses issues. |
 | **Agent-specific context** | Detects current project from cwd, scopes queries to relevant `group_id`, formats results for agent consumption. |
 | **Graceful degradation** | If Graphiti is down, ekko reports status clearly rather than crashing. If Ollama is down, ekko tells the agent. |
 
@@ -286,9 +286,7 @@ Startup target: <100ms (Rust binary, no Python in the critical path).
 
 ```bash
 # Setup
-ekko init                        # Set up Graphiti (auto-detects docker/podman or uv)
-ekko init --container            # Force container runtime (docker/podman)
-ekko init --uv                   # Force uv/Python setup
+ekko init                        # Set up Graphiti + FalkorDB (auto-detects docker/podman)
 ekko doctor                      # Health check (Graphiti, Ollama, graph DB)
 
 # Memory
@@ -325,7 +323,7 @@ ekko import <file>                # Import from JSON
 ### Prerequisites
 
 - **Ollama** — For local LLM and embeddings. `curl -fsSL https://ollama.com/install.sh | sh`
-- **Docker or Podman** (recommended) or **Python 3.10+ with uv** — For running Graphiti
+- **Docker or Podman** — For running Graphiti + FalkorDB
 
 ### Install ekko
 
@@ -344,31 +342,20 @@ ekko init
 ```
 
 This:
-1. Detects whether a container runtime (docker/podman) or Python/uv is available
-2. Pulls the Graphiti MCP server image (or creates a uv virtualenv)
-3. Starts FalkorDB (via container) or configures Neo4j connection
+1. Detects container runtime (docker or podman)
+2. Pulls the Graphiti MCP server + FalkorDB images
+3. Starts services via compose
 4. Pulls required Ollama models (`nomic-embed-text`, `llama3.2:3b`)
 5. Generates `~/.config/ekko/config.toml`
 6. Creates the session index database at `~/.local/share/ekko/index.db`
 7. Runs `ekko doctor` to verify everything works
 
-### Container Setup (Recommended)
-
 ```bash
-ekko init --container
+ekko init
 # Auto-detects docker or podman
 # Pulls: zepai/knowledge-graph-mcp:standalone + falkordb/falkordb:latest
 # Starts: {docker|podman} compose up -d
 # Graphiti available at localhost:8000
-```
-
-### Python/uv Setup (No Container Runtime)
-
-```bash
-ekko init --uv
-# Creates: ~/.local/share/ekko/venv/
-# Installs: graphiti-core[falkordb] (or [kuzu] for embedded)
-# Starts: uv run graphiti-mcp-server --transport http
 ```
 
 ---
@@ -546,7 +533,7 @@ For each new/modified session:
 ### v0.1 — Graphiti Integration
 - [x] Rust project scaffold (cargo, clap, reqwest, tokio)
 - [x] Graphiti client (typed HTTP wrapper for 8 MCP tools)
-- [x] `ekko init` (container/uv setup for Graphiti + FalkorDB + Ollama config)
+- [x] `ekko init` (container setup for Graphiti + FalkorDB + Ollama config)
 - [x] `ekko doctor` (health checks for all services)
 - [x] `ekko status` (Graphiti connection status)
 - [x] Config file management (`~/.config/ekko/config.toml`)

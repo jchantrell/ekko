@@ -13,15 +13,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize ekko (set up Graphiti, graph DB, Ollama models)
-    Init {
-        /// Use container runtime (auto-detects docker/podman)
-        #[arg(long)]
-        container: bool,
-        /// Use uv/Python backend
-        #[arg(long)]
-        uv: bool,
-    },
+    /// Initialize ekko (set up Graphiti + FalkorDB via docker/podman, pull Ollama models)
+    Init,
 
     /// Health check all services
     Doctor,
@@ -42,14 +35,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { container, uv } => {
-            let backend = match (container, uv) {
-                (true, _) => Some(cmd::init::Backend::Container),
-                (_, true) => Some(cmd::init::Backend::Uv),
-                _ => None,
-            };
-            cmd::init::run(backend).await
-        }
+        Commands::Init => cmd::init::run().await,
         Commands::Doctor => cmd::doctor::run().await,
         Commands::Status => cmd::status::run().await,
         Commands::Update { check } => cmd::update::run(check).await,

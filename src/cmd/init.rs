@@ -3,28 +3,21 @@ use std::process::Command;
 
 use crate::config::Config;
 
-#[derive(Debug, Clone, Copy)]
-pub enum Backend {
-    Container,
-    Uv,
-}
-
-pub async fn run(backend: Option<Backend>) -> Result<()> {
+pub async fn run() -> Result<()> {
     if Config::exists() {
         println!("ekko is already initialized. Run `ekko doctor` to check health.");
         return Ok(());
     }
 
-    let backend = match backend {
-        Some(b) => b,
-        None => detect_backend()?,
-    };
+    let runtime = container_runtime().ok_or_else(|| {
+        anyhow::anyhow!(
+            "No container runtime found.\n\
+             Install Docker: https://docs.docker.com/get-docker/\n\
+             Install Podman: https://podman.io/docs/installation"
+        )
+    })?;
 
-    match backend {
-        Backend::Container => init_container().await?,
-        Backend::Uv => init_uv().await?,
-    }
-
+    init_container(runtime).await?;
     ensure_ollama_models()?;
 
     let config = Config::default();
@@ -33,23 +26,6 @@ pub async fn run(backend: Option<Backend>) -> Result<()> {
     println!("\nConfig written to {}", Config::config_path()?.display());
     println!("\nRun `ekko doctor` to verify everything is working.");
     Ok(())
-}
-
-fn detect_backend() -> Result<Backend> {
-    if container_runtime().is_some() {
-        println!("Detected container runtime. Using container backend.");
-        Ok(Backend::Container)
-    } else if which("uv") {
-        println!("No container runtime found. Using uv/Python backend.");
-        Ok(Backend::Uv)
-    } else {
-        bail!(
-            "No container runtime (docker/podman) or uv found.\n\
-             Install Docker: https://docs.docker.com/get-docker/\n\
-             Install Podman: https://podman.io/docs/installation\n\
-             Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
-        );
-    }
 }
 
 /// Returns the container runtime command ("docker" or "podman"), if available.
@@ -63,15 +39,14 @@ fn container_runtime() -> Option<&'static str> {
     }
 }
 
-async fn init_container() -> Result<()> {
-    let runtime = container_runtime().context("no container runtime found")?;
+async fn init_container(runtime: &str) -> Result<()> {
     println!("Setting up Graphiti via {runtime}...");
 
     let data_dir = Config::data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
 
     let compose_path = data_dir.join("docker-compose.yml");
-    std::fs::write(&compose_path, docker_compose_content())
+    std::fs::write(&compose_path, compose_content())
         .context("failed to write docker-compose.yml")?;
 
     let graphiti_config_path = data_dir.join("graphiti-config.yaml");
@@ -103,52 +78,6 @@ async fn init_container() -> Result<()> {
     }
 
     println!("  Graphiti + FalkorDB started.");
-    Ok(())
-}
-
-async fn init_uv() -> Result<()> {
-    println!("Setting up Graphiti via uv...");
-
-    let data_dir = Config::data_dir()?;
-    let venv_dir = data_dir.join("venv");
-    std::fs::create_dir_all(&data_dir)?;
-
-    if !venv_dir.exists() {
-        println!("  Creating virtualenv...");
-        let output = Command::new("uv")
-            .args(["venv", &venv_dir.to_string_lossy()])
-            .output()
-            .context("failed to create virtualenv")?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            bail!("uv venv failed: {stderr}");
-        }
-    }
-
-    println!("  Installing graphiti-core...");
-    let output = Command::new("uv")
-        .args([
-            "pip",
-            "install",
-            "--python",
-            &venv_dir.join("bin/python").to_string_lossy(),
-            "graphiti-core[neo4j]",
-            "mcp[cli]",
-        ])
-        .output()
-        .context("failed to install graphiti-core")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("pip install failed: {stderr}");
-    }
-
-    println!("  Graphiti installed.");
-    println!(
-        "\n  NOTE: You still need a graph database (Neo4j or FalkorDB) running.\n  \
-         See: https://help.getzep.com/graphiti/installation"
-    );
     Ok(())
 }
 
@@ -212,7 +141,7 @@ database:
 "#
 }
 
-fn docker_compose_content() -> &'static str {
+fn compose_content() -> &'static str {
     r#"services:
   falkordb:
     image: falkordb/falkordb:latest
