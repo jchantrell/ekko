@@ -7,8 +7,15 @@ use crate::project;
 
 use super::client;
 
-pub async fn run(group: String, yes: bool) -> Result<()> {
-    let group = project::sanitize_group_id(group);
+pub async fn run(group: Option<String>, yes: bool) -> Result<()> {
+    let group = match group {
+        Some(g) => project::sanitize_group_id(g),
+        None => {
+            let cwd = std::env::current_dir()?;
+            project::detect_group_id(&cwd)
+                .ok_or_else(|| anyhow::anyhow!("could not detect project from cwd — use --group"))?
+        }
+    };
     if !yes {
         print!("This will permanently delete all memories for group '{group}'. Continue? [y/N] ");
         io::stdout().flush()?;

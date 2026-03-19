@@ -106,9 +106,8 @@ enum Commands {
 
     /// Wipe all memories for a project group
     Clear {
-        /// Project group ID (required)
-        #[arg(long, required = true)]
-        group: String,
+        /// Project name (auto-detected from cwd if omitted)
+        group: Option<String>,
 
         /// Skip confirmation prompt
         #[arg(long, short)]
