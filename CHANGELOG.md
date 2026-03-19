@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/jchantrell/ekko/compare/v0.3.0...v0.4.0) (2026-03-19)
+
+
+### Features
+
+* add CLI commands (add, ask, show, rm, nodes, episodes, clear) ([7664c69](https://github.com/jchantrell/ekko/commit/7664c69677ac06cf7d2fd44ccc4fe036bf8c328d))
+* add shared client initialization helper for CLI commands ([0431aca](https://github.com/jchantrell/ekko/commit/0431aca8cb9af69be823c3a376f44e652f3d6927))
+* wire CLI commands into main and clean up dead code ([047a0f4](https://github.com/jchantrell/ekko/commit/047a0f43875ab3f68fa3742ae59c8d08832f10cd))
+
+
+### Bug Fixes
+
+* handle Graphiti error responses in call_tool_json ([1d5c3dd](https://github.com/jchantrell/ekko/commit/1d5c3dd9c5fc1112dd3399359297d3755a9f2f1d))
+* show full UUIDs in list output, truncate multiline node summaries ([8286df2](https://github.com/jchantrell/ekko/commit/8286df2269fa339bd1f138ce72856787aa7cfa3c))
+
 ## [0.3.0](https://github.com/jchantrell/ekko/compare/v0.2.2...v0.3.0) (2026-03-19)
 
 
