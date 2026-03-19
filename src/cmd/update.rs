@@ -15,12 +15,19 @@ pub async fn run(check_only: bool) -> Result<()> {
 
         println!("Checking for updates...");
 
+        let latest = latest_version()?;
+        if latest.trim_start_matches('v') == current {
+            println!("Already on latest (v{current}).");
+            return Ok(());
+        }
+
         let status = self_update::backends::github::Update::configure()
             .repo_owner(REPO_OWNER)
             .repo_name(REPO_NAME)
             .bin_name("ekko")
             .show_download_progress(true)
             .current_version(current)
+            .target_version_tag(&latest)
             .no_confirm(false)
             .build()
             .context("failed to configure updater")?
@@ -38,7 +45,7 @@ pub async fn run(check_only: bool) -> Result<()> {
     .await?
 }
 
-fn check(current: &str) -> Result<()> {
+fn latest_version() -> Result<String> {
     let releases = self_update::backends::github::ReleaseList::configure()
         .repo_owner(REPO_OWNER)
         .repo_name(REPO_NAME)
@@ -47,20 +54,20 @@ fn check(current: &str) -> Result<()> {
         .fetch()
         .context("failed to fetch releases")?;
 
-    match releases.first() {
-        Some(latest) => {
-            let latest_ver = latest.version.trim_start_matches('v');
-            if latest_ver != current {
-                println!("Update available: v{current} -> v{latest_ver}");
-                println!("Run `ekko update` to install.");
-            } else {
-                println!("Already on latest (v{current}).");
-            }
-        }
-        None => {
-            println!("No releases found.");
-        }
-    }
+    releases
+        .first()
+        .map(|r| format!("v{}", r.version))
+        .ok_or_else(|| anyhow::anyhow!("no releases found"))
+}
 
+fn check(current: &str) -> Result<()> {
+    let latest = latest_version()?;
+    let latest_ver = latest.trim_start_matches('v');
+    if latest_ver != current {
+        println!("Update available: v{current} -> v{latest_ver}");
+        println!("Run `ekko update` to install.");
+    } else {
+        println!("Already on latest (v{current}).");
+    }
     Ok(())
 }
