@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/jchantrell/ekko/compare/v0.5.1...v0.5.2) (2026-03-19)
+
+
+### Bug Fixes
+
+* sanitize hyphens in group_id for FalkorDB/RediSearch compatibility ([a1ab31e](https://github.com/jchantrell/ekko/commit/a1ab31e4f0128b88d1712ebff2a4f90e97d843fb))
+
 ## [0.5.1](https://github.com/jchantrell/ekko/compare/v0.5.0...v0.5.1) (2026-03-19)
 
 
