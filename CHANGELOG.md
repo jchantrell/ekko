@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/jchantrell/ekko/compare/v0.2.1...v0.2.2) (2026-03-19)
+
+
+### Bug Fixes
+
+* use fully qualified image names for podman, write config before model pulls ([bab4544](https://github.com/jchantrell/ekko/commit/bab454491e5d284f7a29acd825accd32ed4bbb2f))
+
 ## [0.2.1](https://github.com/jchantrell/ekko/compare/v0.2.0...v0.2.1) (2026-03-18)
 
 
