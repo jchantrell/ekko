@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.3](https://github.com/jchantrell/ekko/compare/v0.5.2...v0.5.3) (2026-03-19)
+
+
+### Bug Fixes
+
+* drop ekko_ prefix from MCP tool names ([7fd3100](https://github.com/jchantrell/ekko/commit/7fd31005f7fa55283dd26fcb00bd96f7f57c9335))
+
+
+### Reverts
+
+* remove global memory, keep hyphen sanitization and rm subcommands ([fe8cedb](https://github.com/jchantrell/ekko/commit/fe8cedb505b4905009a4cf2d350d3fede65862f4))
+
 ## [0.5.2](https://github.com/jchantrell/ekko/compare/v0.5.1...v0.5.2) (2026-03-19)
 
 
