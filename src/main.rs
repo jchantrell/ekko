@@ -20,7 +20,7 @@ enum Commands {
         /// The text content to remember
         text: String,
 
-        /// Project group ID (auto-detected from cwd)
+        /// Project group ID (defaults to _global if omitted)
         #[arg(long)]
         group: Option<String>,
 

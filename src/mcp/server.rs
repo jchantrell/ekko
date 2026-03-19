@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 
 use crate::config::Config;
 use crate::graphiti::{self, *};
-use crate::project;
+use crate::project::{self, GLOBAL_GROUP_ID};
 
 /// MCP server exposing ekko's memory tools over STDIO.
 #[derive(Clone)]
@@ -26,7 +26,7 @@ pub struct EkkoServer {
 pub struct RememberParams {
     /// The memory content to store (freeform text).
     pub content: String,
-    /// Optional project scope. Auto-detected from cwd if omitted.
+    /// Optional project scope. Auto-detected from cwd if omitted. Omit to store as global memory (not scoped to any project).
     pub group_id: Option<String>,
     /// Optional name for this memory episode.
     pub name: Option<String>,
@@ -38,7 +38,7 @@ pub struct RememberParams {
 pub struct RecallParams {
     /// Search query — what do you want to remember?
     pub query: String,
-    /// Optional project scope. Auto-detected from cwd if omitted.
+    /// Optional project scope. Auto-detected from cwd if omitted. Global memories are always included.
     pub group_id: Option<String>,
     /// Maximum number of facts to return (default: 10).
     pub max_facts: Option<u32>,
@@ -56,7 +56,7 @@ pub struct ForgetParams {
 pub struct EntitiesParams {
     /// Search query for entities.
     pub query: String,
-    /// Optional project scope. Auto-detected from cwd if omitted.
+    /// Optional project scope. Auto-detected from cwd if omitted. Global memories are always included.
     pub group_id: Option<String>,
     /// Maximum number of entities to return (default: 10).
     pub max_nodes: Option<u32>,
@@ -64,7 +64,7 @@ pub struct EntitiesParams {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct EpisodesParams {
-    /// Optional project scope. Auto-detected from cwd if omitted.
+    /// Optional project scope. Auto-detected from cwd if omitted. Global memories are always included.
     pub group_id: Option<String>,
     /// Maximum number of episodes to return (default: 10).
     pub max_episodes: Option<u32>,
@@ -80,17 +80,22 @@ impl EkkoServer {
         }
     }
 
-    fn resolve_group_id(&self, explicit: Option<String>) -> Option<String> {
-        explicit.or_else(|| self.group_id.clone())
+    /// Resolve group_id for write operations.
+    /// Explicit param wins, otherwise global.
+    fn resolve_group_id(&self, explicit: Option<String>) -> String {
+        explicit.unwrap_or_else(|| GLOBAL_GROUP_ID.to_string())
     }
 
-    fn group_ids(&self, explicit: Option<String>) -> Option<Vec<String>> {
-        self.resolve_group_id(explicit).map(|g| vec![g])
+    /// Build group_ids for read operations.
+    /// Always includes `_global` alongside the project scope.
+    fn read_group_ids(&self, explicit: Option<String>) -> Vec<String> {
+        let project = explicit.or_else(|| self.group_id.clone());
+        project::read_group_ids(project)
     }
 
     #[tool(
         name = "ekko_remember",
-        description = "Store a memory in ekko's knowledge graph. Graphiti will extract entities, facts, and relationships automatically. The memory is processed asynchronously (5-15s) but this call returns immediately."
+        description = "Store a memory in ekko's knowledge graph. Graphiti will extract entities, facts, and relationships automatically. The memory is processed asynchronously (5-15s) but this call returns immediately. Memories are scoped to the current project by default. Omit group_id to store as global memory visible across all projects."
     )]
     async fn remember(
         &self,
@@ -109,7 +114,7 @@ impl EkkoServer {
             .add_memory(AddMemoryRequest {
                 name,
                 episode_body: params.content,
-                group_id,
+                group_id: Some(group_id),
                 source: "text".into(),
                 source_description: params.source_description.unwrap_or_default(),
                 uuid: None,
@@ -125,25 +130,25 @@ impl EkkoServer {
 
     #[tool(
         name = "ekko_recall",
-        description = "Search ekko's knowledge graph for relevant memories. Returns both facts (relationships with temporal metadata) and entities. Use this to recall preferences, decisions, patterns, or anything previously stored."
+        description = "Search ekko's knowledge graph for relevant memories. Returns both facts (relationships with temporal metadata) and entities. Use this to recall preferences, decisions, patterns, or anything previously stored. Always searches both project-scoped and global memories."
     )]
     async fn recall(
         &self,
         Parameters(params): Parameters<RecallParams>,
     ) -> Result<CallToolResult, McpError> {
-        let group_ids = self.group_ids(params.group_id);
+        let group_ids = self.read_group_ids(params.group_id);
 
         let client = self.client.lock().await;
 
         let facts_req = SearchFactsRequest {
             query: params.query.clone(),
-            group_ids: group_ids.clone(),
+            group_ids: Some(group_ids.clone()),
             max_facts: Some(params.max_facts.unwrap_or(10)),
             center_node_uuid: None,
         };
         let nodes_req = SearchNodesRequest {
             query: params.query,
-            group_ids,
+            group_ids: Some(group_ids),
             max_nodes: Some(params.max_nodes.unwrap_or(5)),
             entity_types: None,
         };
@@ -206,13 +211,13 @@ impl EkkoServer {
         &self,
         Parameters(params): Parameters<EntitiesParams>,
     ) -> Result<CallToolResult, McpError> {
-        let group_ids = self.group_ids(params.group_id);
+        let group_ids = self.read_group_ids(params.group_id);
 
         let client = self.client.lock().await;
         let resp = client
             .search_nodes(SearchNodesRequest {
                 query: params.query,
-                group_ids,
+                group_ids: Some(group_ids),
                 max_nodes: Some(params.max_nodes.unwrap_or(10)),
                 entity_types: None,
             })
@@ -245,12 +250,12 @@ impl EkkoServer {
         &self,
         Parameters(params): Parameters<EpisodesParams>,
     ) -> Result<CallToolResult, McpError> {
-        let group_ids = self.group_ids(params.group_id);
+        let group_ids = self.read_group_ids(params.group_id);
 
         let client = self.client.lock().await;
         let resp = client
             .get_episodes(GetEpisodesRequest {
-                group_ids,
+                group_ids: Some(group_ids),
                 max_episodes: Some(params.max_episodes.unwrap_or(10)),
             })
             .await

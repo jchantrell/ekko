@@ -8,9 +8,8 @@ use super::client;
 pub async fn run(group: Option<String>, max: Option<u32>) -> Result<()> {
     let client = client::connect().await?;
 
-    let group_ids = group
-        .or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
-        .map(|g| vec![g]);
+    let project = group.or_else(|| project::detect_group_id(&std::env::current_dir().ok()?));
+    let group_ids = Some(project::read_group_ids(project));
 
     let resp = client
         .get_episodes(GetEpisodesRequest {
