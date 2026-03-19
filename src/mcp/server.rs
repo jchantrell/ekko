@@ -83,7 +83,9 @@ impl EkkoServer {
     /// Resolve group_id for write operations.
     /// Explicit param wins, otherwise global.
     fn resolve_group_id(&self, explicit: Option<String>) -> String {
-        explicit.unwrap_or_else(|| GLOBAL_GROUP_ID.to_string())
+        explicit
+            .map(project::sanitize_group_id)
+            .unwrap_or_else(|| GLOBAL_GROUP_ID.to_string())
     }
 
     /// Build group_ids for read operations.

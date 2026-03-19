@@ -3,6 +3,15 @@ use std::path::Path;
 /// Reserved group_id for memories that aren't scoped to any project.
 pub const GLOBAL_GROUP_ID: &str = "_global";
 
+/// Sanitize a group_id for use with FalkorDB/RediSearch.
+///
+/// RediSearch TEXT fields tokenize on hyphens, so `chromatic-poe` becomes
+/// two tokens `[chromatic, poe]` which breaks `@group_id` filters.
+/// Underscores are the one punctuation character RediSearch preserves.
+pub fn sanitize_group_id(id: String) -> String {
+    id.replace('-', "_")
+}
+
 /// Detect project name from a directory path.
 ///
 /// Walks up from `dir` looking for VCS roots (.git) or workspace markers
@@ -23,7 +32,9 @@ pub fn detect_group_id(dir: &Path) -> Option<String> {
     loop {
         for marker in &markers {
             if current.join(marker).exists() {
-                return current.file_name().map(|n| n.to_string_lossy().to_string());
+                return current
+                    .file_name()
+                    .map(|n| sanitize_group_id(n.to_string_lossy().to_string()));
             }
         }
         match current.parent() {
@@ -32,7 +43,8 @@ pub fn detect_group_id(dir: &Path) -> Option<String> {
         }
     }
 
-    dir.file_name().map(|n| n.to_string_lossy().to_string())
+    dir.file_name()
+        .map(|n| sanitize_group_id(n.to_string_lossy().to_string()))
 }
 
 /// Build group_ids for read operations: project scope + global.
@@ -41,7 +53,7 @@ pub fn detect_group_id(dir: &Path) -> Option<String> {
 /// project-scoped results.
 pub fn read_group_ids(project: Option<String>) -> Vec<String> {
     let mut ids = vec![GLOBAL_GROUP_ID.to_string()];
-    if let Some(g) = project
+    if let Some(g) = project.map(sanitize_group_id)
         && g != GLOBAL_GROUP_ID
     {
         ids.push(g);

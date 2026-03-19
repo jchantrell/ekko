@@ -2,14 +2,16 @@ use anyhow::Result;
 use chrono::Utc;
 
 use crate::graphiti::AddMemoryRequest;
-use crate::project::GLOBAL_GROUP_ID;
+use crate::project::{self, GLOBAL_GROUP_ID};
 
 use super::client;
 
 pub async fn run(text: String, group: Option<String>, name: Option<String>, source: Option<String>) -> Result<()> {
     let client = client::connect().await?;
 
-    let group_id = group.unwrap_or_else(|| GLOBAL_GROUP_ID.to_string());
+    let group_id = group
+        .map(project::sanitize_group_id)
+        .unwrap_or_else(|| GLOBAL_GROUP_ID.to_string());
     let name = name.unwrap_or_else(|| Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string());
 
     let req = AddMemoryRequest {
