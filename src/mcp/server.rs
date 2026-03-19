@@ -91,7 +91,7 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_remember",
+        name = "remember",
         description = "Store a memory in ekko's knowledge graph. Graphiti will extract entities, facts, and relationships automatically. The memory is processed asynchronously (5-15s) but this call returns immediately."
     )]
     async fn remember(
@@ -126,7 +126,7 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_recall",
+        name = "recall",
         description = "Search ekko's knowledge graph for relevant memories. Returns both facts (relationships with temporal metadata) and entities. Use this to recall preferences, decisions, patterns, or anything previously stored."
     )]
     async fn recall(
@@ -182,8 +182,8 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_forget",
-        description = "Delete a specific fact from the knowledge graph by its UUID. Use ekko_recall first to find the UUID of the fact you want to remove."
+        name = "forget",
+        description = "Delete a specific fact from the knowledge graph by its UUID. Use recall first to find the UUID of the fact you want to remove."
     )]
     async fn forget(
         &self,
@@ -201,7 +201,7 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_entities",
+        name = "entities",
         description = "Search for entities (people, technologies, concepts, projects) in the knowledge graph. Returns entity names, labels, and summaries."
     )]
     async fn entities(
@@ -240,7 +240,7 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_episodes",
+        name = "episodes",
         description = "List recent episodes (memory ingestion events) from the knowledge graph. Each episode represents a stored memory or indexed session."
     )]
     async fn episodes(
@@ -274,7 +274,7 @@ impl EkkoServer {
     }
 
     #[tool(
-        name = "ekko_status",
+        name = "status",
         description = "Check ekko's health — is Graphiti reachable? Is the MCP session active? Returns system status for diagnostics."
     )]
     async fn status(&self) -> Result<CallToolResult, McpError> {
@@ -308,9 +308,9 @@ impl ServerHandler for EkkoServer {
             .with_server_info(Implementation::new("ekko", env!("CARGO_PKG_VERSION")))
             .with_instructions(
                 "ekko provides persistent memory for AI agents via a temporal knowledge graph. \
-                 Use ekko_remember to store memories, ekko_recall to search them, \
-                 ekko_forget to remove facts, ekko_entities to explore the graph, \
-                 ekko_episodes to list ingestion history, and ekko_status to check health.",
+                 Use remember to store memories, recall to search them, \
+                 forget to remove facts, entities to explore the graph, \
+                 episodes to list ingestion history, and status to check health.",
             )
     }
 }
