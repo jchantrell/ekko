@@ -14,6 +14,14 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+enum RmTarget {
+    /// Delete a fact by UUID
+    Fact { uuid: String },
+    /// Delete an episode by UUID
+    Episode { uuid: String },
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Store a memory in the knowledge graph
     Add {
@@ -61,10 +69,10 @@ enum Commands {
         uuid: String,
     },
 
-    /// Delete a fact by UUID
+    /// Delete a fact or episode by UUID
     Rm {
-        /// Fact UUID
-        uuid: String,
+        #[command(subcommand)]
+        target: RmTarget,
     },
 
     /// List or search entities in the knowledge graph
@@ -137,7 +145,10 @@ async fn main() -> anyhow::Result<()> {
             cmd::ask::run(query, group, nodes, max_facts, max_nodes).await
         }
         Commands::Show { uuid } => cmd::show::run(uuid).await,
-        Commands::Rm { uuid } => cmd::rm::run(uuid).await,
+        Commands::Rm { target } => match target {
+            RmTarget::Fact { uuid } => cmd::rm::run_fact(uuid).await,
+            RmTarget::Episode { uuid } => cmd::rm::run_episode(uuid).await,
+        },
         Commands::Nodes { query, group, entity_type, max } => {
             cmd::nodes::run(query, group, entity_type, max).await
         }

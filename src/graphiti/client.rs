@@ -283,7 +283,6 @@ impl Client {
             .await
     }
 
-    #[allow(dead_code)]
     pub async fn delete_episode(&self, uuid: &str) -> Result<SuccessResponse> {
         self.call_tool_json("delete_episode", serde_json::json!({ "uuid": uuid }))
             .await
