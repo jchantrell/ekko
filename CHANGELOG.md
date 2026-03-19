@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/jchantrell/ekko/compare/v0.2.2...v0.3.0) (2026-03-19)
+
+
+### Features
+
+* add 'ekko serve' command to start MCP server ([7cb57f7](https://github.com/jchantrell/ekko/commit/7cb57f7c7ec4158d2195f6d81678f38c5ba14aea))
+* add MCP server with 6 tools over STDIO ([352e011](https://github.com/jchantrell/ekko/commit/352e01147c080dd11a7986acba02911373caaabc))
+* add project detection from cwd for group_id scoping ([10e2945](https://github.com/jchantrell/ekko/commit/10e294515746159e4e710ca31eaaa86cb7b1e730))
+* add rmcp, chrono, schemars, tracing-subscriber deps ([dbcae1f](https://github.com/jchantrell/ekko/commit/dbcae1f113258272f7e5060a525a0a171414c659))
+
+
+### Bug Fixes
+
+* route Graphiti LLM calls to local Ollama via OPENAI_BASE_URL ([897c4af](https://github.com/jchantrell/ekko/commit/897c4af0e0fad55c1e0a01d723458ef30903dda0))
+
 ## [0.2.2](https://github.com/jchantrell/ekko/compare/v0.2.1...v0.2.2) (2026-03-19)
 
 
