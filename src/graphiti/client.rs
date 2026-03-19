@@ -237,12 +237,20 @@ impl Client {
     }
 
     /// Call a tool and deserialize the text content as JSON.
+    ///
+    /// If Graphiti returns an error envelope (`{"error": "..."}`) instead of
+    /// the expected response type, we surface it as an `anyhow::Error`.
     async fn call_tool_json<T: serde::de::DeserializeOwned>(
         &self,
         name: &str,
         arguments: serde_json::Value,
     ) -> Result<T> {
         let text = self.call_tool(name, arguments).await?;
+
+        if let Ok(err) = serde_json::from_str::<ErrorResponse>(&text) {
+            bail!("{}", err.error);
+        }
+
         serde_json::from_str(&text)
             .with_context(|| format!("failed to parse response from '{name}': {text}"))
     }
