@@ -7,16 +7,11 @@ pub struct AddMemoryRequest {
     pub episode_body: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_id: Option<String>,
-    #[serde(default = "default_source")]
     pub source: String,
     #[serde(default)]
     pub source_description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
-}
-
-fn default_source() -> String {
-    "text".into()
 }
 
 #[derive(Debug, Serialize)]
