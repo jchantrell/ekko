@@ -32,7 +32,7 @@ pub async fn run(
     } else {
         println!("Facts:");
         for fact in &facts_resp.facts {
-            println!("  {} — {}", &fact.uuid[..8], fact);
+            println!("  {} {}", fact.uuid, fact);
         }
     }
 
@@ -51,7 +51,7 @@ pub async fn run(
         } else {
             println!("\nEntities:");
             for node in &nodes_resp.nodes {
-                println!("  {} — {}", &node.uuid[..8], node);
+                println!("  {} {}", node.uuid, node);
             }
         }
     }

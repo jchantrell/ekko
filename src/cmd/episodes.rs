@@ -23,7 +23,7 @@ pub async fn run(group: Option<String>, max: Option<u32>) -> Result<()> {
         println!("No episodes found.");
     } else {
         for ep in &resp.episodes {
-            println!("{} — {}", &ep.uuid[..8], ep);
+            println!("{} {}", ep.uuid, ep);
         }
     }
 

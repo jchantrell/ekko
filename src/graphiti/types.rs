@@ -133,7 +133,8 @@ impl std::fmt::Display for Node {
             write!(f, " [{}]", self.labels.join(", "))?;
         }
         if let Some(ref summary) = self.summary {
-            write!(f, " — {summary}")?;
+            let first_line = summary.lines().next().unwrap_or(summary);
+            write!(f, " — {first_line}")?;
         }
         Ok(())
     }

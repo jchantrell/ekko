@@ -33,7 +33,7 @@ pub async fn run(
         println!("No entities found.");
     } else {
         for node in &resp.nodes {
-            println!("{} — {}", &node.uuid[..8], node);
+            println!("{} {}", node.uuid, node);
         }
     }
 
