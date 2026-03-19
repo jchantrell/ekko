@@ -41,10 +41,10 @@ pub fn detect_group_id(dir: &Path) -> Option<String> {
 /// project-scoped results.
 pub fn read_group_ids(project: Option<String>) -> Vec<String> {
     let mut ids = vec![GLOBAL_GROUP_ID.to_string()];
-    if let Some(g) = project {
-        if g != GLOBAL_GROUP_ID {
-            ids.push(g);
-        }
+    if let Some(g) = project
+        && g != GLOBAL_GROUP_ID
+    {
+        ids.push(g);
     }
     ids
 }
