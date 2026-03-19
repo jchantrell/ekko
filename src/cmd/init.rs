@@ -18,12 +18,13 @@ pub async fn run() -> Result<()> {
     })?;
 
     init_container(runtime).await?;
-    ensure_ollama_models()?;
 
     let config = Config::default();
     config.save().context("failed to save config")?;
-
     println!("\nConfig written to {}", Config::config_path()?.display());
+
+    ensure_ollama_models();
+
     println!("\nRun `ekko doctor` to verify everything is working.");
     Ok(())
 }
@@ -50,7 +51,7 @@ async fn init_container(runtime: &str) -> Result<()> {
         .context("failed to write docker-compose.yml")?;
 
     let graphiti_config_path = data_dir.join("graphiti-config.yaml");
-    std::fs::write(&graphiti_config_path, graphiti_config_content())
+    std::fs::write(&graphiti_config_path, graphiti_config_content(runtime))
         .context("failed to write graphiti-config.yaml")?;
 
     println!("  Pulling images...");
@@ -81,30 +82,48 @@ async fn init_container(runtime: &str) -> Result<()> {
     Ok(())
 }
 
-fn ensure_ollama_models() -> Result<()> {
+fn ensure_ollama_models() {
     if !which("ollama") {
         println!(
             "\n  WARNING: Ollama not found. Install it: https://ollama.com/install.sh\n  \
              Graphiti needs an LLM and embedding model to function."
         );
-        return Ok(());
+        return;
     }
 
     let models = ["nomic-embed-text", "llama3.2:3b"];
     for model in models {
-        println!("  Ensuring Ollama model: {model}");
-        let output = Command::new("ollama")
-            .args(["pull", model])
-            .output()
-            .with_context(|| format!("failed to pull {model}"))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            println!("  WARNING: Failed to pull {model}: {stderr}");
+        if has_ollama_model(model) {
+            println!("  Ollama model ready: {model}");
+        } else {
+            println!("  Pulling Ollama model: {model} (this may take a while)...");
+            match Command::new("ollama").args(["pull", model]).spawn() {
+                Ok(mut child) => {
+                    // Wait for the pull to complete
+                    match child.wait() {
+                        Ok(status) if status.success() => {
+                            println!("  Ollama model ready: {model}");
+                        }
+                        Ok(_) => println!("  WARNING: Failed to pull {model}"),
+                        Err(e) => println!("  WARNING: Failed to pull {model}: {e}"),
+                    }
+                }
+                Err(e) => println!("  WARNING: Failed to pull {model}: {e}"),
+            }
         }
     }
+}
 
-    Ok(())
+fn has_ollama_model(model: &str) -> bool {
+    let output = Command::new("ollama").args(["list"]).output();
+    match output {
+        Ok(o) => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            let base_name = model.split(':').next().unwrap_or(model);
+            stdout.lines().any(|line| line.contains(base_name))
+        }
+        Err(_) => false,
+    }
 }
 
 fn which(cmd: &str) -> bool {
@@ -115,14 +134,21 @@ fn which(cmd: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn graphiti_config_content() -> &'static str {
-    r#"llm:
+fn graphiti_config_content(runtime: &str) -> String {
+    let ollama_host = if runtime == "podman" {
+        "host.containers.internal"
+    } else {
+        "host.docker.internal"
+    };
+
+    format!(
+        r#"llm:
   provider: openai
   model: llama3.2:3b
   providers:
     openai:
       api_key: ollama
-      api_url: http://host.docker.internal:11434/v1
+      api_url: http://{ollama_host}:11434/v1
 
 embedder:
   provider: openai
@@ -131,7 +157,7 @@ embedder:
   providers:
     openai:
       api_key: ollama
-      api_url: http://host.docker.internal:11434/v1
+      api_url: http://{ollama_host}:11434/v1
 
 database:
   provider: falkordb
@@ -139,12 +165,13 @@ database:
     uri: redis://falkordb:6379
     database: default_db
 "#
+    )
 }
 
 fn compose_content() -> &'static str {
     r#"services:
   falkordb:
-    image: falkordb/falkordb:latest
+    image: docker.io/falkordb/falkordb:latest
     ports:
       - "6379:6379"
       - "3000:3000"
@@ -158,7 +185,7 @@ fn compose_content() -> &'static str {
       start_period: 10s
 
   graphiti:
-    image: zepai/knowledge-graph-mcp:standalone
+    image: docker.io/zepai/knowledge-graph-mcp:standalone
     ports:
       - "8000:8000"
     environment:
