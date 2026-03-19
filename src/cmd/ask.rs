@@ -14,8 +14,10 @@ pub async fn run(
 ) -> Result<()> {
     let client = client::connect().await?;
 
-    let project = group.or_else(|| project::detect_group_id(&std::env::current_dir().ok()?));
-    let group_ids = Some(project::read_group_ids(project));
+    let group_ids = group
+        .map(project::sanitize_group_id)
+        .or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
+        .map(|g| vec![g]);
 
     let facts_resp = client
         .search_facts(SearchFactsRequest {
