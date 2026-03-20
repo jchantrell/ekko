@@ -107,10 +107,10 @@ impl SessionParser for ClaudeCodeParser {
                 }
             }
 
-            if cwd.is_none() {
-                if let Some(c) = val.get("cwd").and_then(|v| v.as_str()) {
-                    cwd = Some(c.to_string());
-                }
+            if cwd.is_none()
+                && let Some(c) = val.get("cwd").and_then(|v| v.as_str())
+            {
+                cwd = Some(c.to_string());
             }
 
             match msg_type {
@@ -150,10 +150,10 @@ impl SessionParser for ClaudeCodeParser {
 
                     let message = &val["message"];
 
-                    if model.is_none() {
-                        if let Some(m) = message.get("model").and_then(|v| v.as_str()) {
-                            model = Some(m.to_string());
-                        }
+                    if model.is_none()
+                        && let Some(m) = message.get("model").and_then(|v| v.as_str())
+                    {
+                        model = Some(m.to_string());
                     }
 
                     if let Some(content_arr) = message.get("content").and_then(|c| c.as_array()) {
@@ -208,13 +208,12 @@ impl SessionParser for ClaudeCodeParser {
                     }
                 }
                 "file-history-snapshot" => {
-                    if let Some(snapshot) = val.get("snapshot") {
-                        if let Some(backups) = snapshot.get("trackedFileBackups") {
-                            if let Some(obj) = backups.as_object() {
-                                for key in obj.keys() {
-                                    files_touched.insert(key.clone());
-                                }
-                            }
+                    if let Some(snapshot) = val.get("snapshot")
+                        && let Some(backups) = snapshot.get("trackedFileBackups")
+                        && let Some(obj) = backups.as_object()
+                    {
+                        for key in obj.keys() {
+                            files_touched.insert(key.clone());
                         }
                     }
                 }

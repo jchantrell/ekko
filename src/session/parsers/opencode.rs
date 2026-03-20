@@ -125,10 +125,10 @@ impl SessionParser for OpenCodeParser {
                 .and_then(|r| r.as_str())
                 .unwrap_or("");
 
-            if model.is_none() {
-                if let Some(m) = msg_data.get("modelID").and_then(|v| v.as_str()) {
-                    model = Some(m.to_string());
-                }
+            if model.is_none()
+                && let Some(m) = msg_data.get("modelID").and_then(|v| v.as_str())
+            {
+                model = Some(m.to_string());
             }
 
             let parts: Vec<Value> = part_stmt
@@ -142,10 +142,10 @@ impl SessionParser for OpenCodeParser {
                     let mut text_parts = Vec::new();
                     for part in &parts {
                         let ptype = part.get("type").and_then(|t| t.as_str()).unwrap_or("");
-                        if ptype == "text" {
-                            if let Some(t) = part.get("text").and_then(|t| t.as_str()) {
-                                text_parts.push(t.to_string());
-                            }
+                        if ptype == "text"
+                            && let Some(t) = part.get("text").and_then(|t| t.as_str())
+                        {
+                            text_parts.push(t.to_string());
                         }
                     }
                     if !text_parts.is_empty() {

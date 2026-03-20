@@ -24,11 +24,11 @@ pub async fn summarize(session: &ParsedSession, no_llm: bool) -> Result<String> 
 fn extractive_summary(session: &ParsedSession) -> String {
     let mut parts = Vec::new();
 
-    if let Some(first_turn) = session.turns.first() {
-        if let Some(ref msg) = first_turn.user_message {
-            let prompt = truncate_str(msg, 300);
-            parts.push(format!("Initial prompt: {prompt}"));
-        }
+    if let Some(first_turn) = session.turns.first()
+        && let Some(ref msg) = first_turn.user_message
+    {
+        let prompt = truncate_str(msg, 300);
+        parts.push(format!("Initial prompt: {prompt}"));
     }
 
     if !session.files_touched.is_empty() {
