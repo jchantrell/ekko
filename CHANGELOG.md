@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/jchantrell/ekko/compare/v0.8.0...v0.9.0) (2026-03-20)
+
+
+### Features
+
+* session indexer (`ekko sync`) ([492886a](https://github.com/jchantrell/ekko/commit/492886acf131820fb4417b68f4cc51d3883486a8))
+
+
+### Bug Fixes
+
+* resolve clippy collapsible_if warnings ([45798cd](https://github.com/jchantrell/ekko/commit/45798cd5c84b4361893a7eeaedecf01cf937b461))
+* scope background sync to current project, cap at 50 sessions ([40bd6fa](https://github.com/jchantrell/ekko/commit/40bd6fa5bff58d8bce3fd4178940b4a4ba83df53))
+
 ## [0.8.0](https://github.com/jchantrell/ekko/compare/v0.7.1...v0.8.0) (2026-03-20)
 
 
