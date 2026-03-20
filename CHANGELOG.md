@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/jchantrell/ekko/compare/v0.7.0...v0.7.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* remove queue CLI command, keep as MCP-only tool ([4244cc9](https://github.com/jchantrell/ekko/commit/4244cc92fe7a165b6047f75f7e709f345ccb202f))
+
 ## [0.7.0](https://github.com/jchantrell/ekko/compare/v0.6.0...v0.7.0) (2026-03-20)
 
 
