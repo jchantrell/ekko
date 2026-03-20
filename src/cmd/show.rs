@@ -3,7 +3,7 @@ use anyhow::Result;
 use super::client;
 
 pub async fn run(uuid: String) -> Result<()> {
-    let client = client::connect().await?;
+    let mut client = client::connect().await?;
     let fact = client.get_edge(&uuid).await?;
 
     println!("UUID:       {}", fact.uuid);

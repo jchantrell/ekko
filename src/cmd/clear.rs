@@ -28,7 +28,7 @@ pub async fn run(group: Option<String>, yes: bool) -> Result<()> {
         }
     }
 
-    let client = client::connect().await?;
+    let mut client = client::connect().await?;
 
     let resp = client
         .clear_graph(ClearGraphRequest {

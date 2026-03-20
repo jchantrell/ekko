@@ -106,7 +106,7 @@ impl EkkoServer {
             )
         });
 
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
         let result = client
             .add_memory(AddMemoryRequest {
                 name,
@@ -115,6 +115,7 @@ impl EkkoServer {
                 source: "text".into(),
                 source_description: params.source_description.unwrap_or_default(),
                 uuid: None,
+                sync: false,
             })
             .await
             .map_err(|e| McpError::internal_error(format!("add_memory failed: {e}"), None))?;
@@ -135,7 +136,7 @@ impl EkkoServer {
     ) -> Result<CallToolResult, McpError> {
         let group_ids = self.group_ids(params.group_id);
 
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
 
         let facts_req = SearchFactsRequest {
             query: params.query.clone(),
@@ -189,7 +190,7 @@ impl EkkoServer {
         &self,
         Parameters(params): Parameters<ForgetParams>,
     ) -> Result<CallToolResult, McpError> {
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
         let result = client.delete_edge(&params.uuid).await.map_err(|e| {
             McpError::internal_error(format!("delete_entity_edge failed: {e}"), None)
         })?;
@@ -210,7 +211,7 @@ impl EkkoServer {
     ) -> Result<CallToolResult, McpError> {
         let group_ids = self.group_ids(params.group_id);
 
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
         let resp = client
             .search_nodes(SearchNodesRequest {
                 query: params.query,
@@ -249,7 +250,7 @@ impl EkkoServer {
     ) -> Result<CallToolResult, McpError> {
         let group_ids = self.group_ids(params.group_id);
 
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
         let resp = client
             .get_episodes(GetEpisodesRequest {
                 group_ids,
@@ -278,7 +279,7 @@ impl EkkoServer {
         description = "Check ekko's health — is Graphiti reachable? Is the MCP session active? Returns system status for diagnostics."
     )]
     async fn status(&self) -> Result<CallToolResult, McpError> {
-        let client = self.client.lock().await;
+        let mut client = self.client.lock().await;
 
         let health = client.health().await.unwrap_or(false);
         if !health {
@@ -319,10 +320,7 @@ impl EkkoServer {
     /// Build a server from config, auto-detecting project from cwd.
     pub async fn from_config() -> anyhow::Result<Self> {
         let config = Config::load()?;
-        let mut client = graphiti::Client::new(&config.graphiti.url);
-
-        client
-            .initialize()
+        let client = graphiti::Client::new(&config)
             .await
             .map_err(|e| anyhow::anyhow!("failed to initialize graphiti: {e}"))?;
 

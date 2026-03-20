@@ -7,7 +7,7 @@ use crate::project;
 use super::client;
 
 pub async fn run(text: String, group: Option<String>, name: Option<String>, source: Option<String>) -> Result<()> {
-    let client = client::connect().await?;
+    let mut client = client::connect().await?;
 
     let group_id = group
         .map(project::sanitize_group_id)
@@ -21,6 +21,7 @@ pub async fn run(text: String, group: Option<String>, name: Option<String>, sour
         source: source.unwrap_or_else(|| "cli".into()),
         source_description: "ekko cli".into(),
         uuid: None,
+        sync: true,
     };
 
     let resp = client.add_memory(req).await?;

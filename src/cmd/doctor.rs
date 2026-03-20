@@ -2,7 +2,6 @@ use anyhow::Result;
 use std::process::Command;
 
 use crate::config::Config;
-use crate::graphiti;
 
 pub async fn run() -> Result<()> {
     println!("ekko doctor\n");
@@ -39,40 +38,29 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // 3. Graphiti
-    let client = graphiti::Client::new(&config.graphiti.url);
-    let graphiti_ok = client.health().await.unwrap_or(false);
+    // 3. Python venv
+    let python_path = Config::python_path()?;
+    let venv_ok = python_path.exists();
     check(
-        &format!("Graphiti reachable at {}", config.graphiti.url),
-        graphiti_ok,
+        &format!("Python venv: {}", python_path.display()),
+        venv_ok,
         &mut all_ok,
     );
 
-    if graphiti_ok {
-        let mut client = graphiti::Client::new(&config.graphiti.url);
-        match client.initialize().await {
-            Ok(()) => {
-                check("Graphiti MCP session", true, &mut all_ok);
-                match client.status().await {
-                    Ok(status) => {
-                        check(
-                            &format!("Graphiti status: {}", status.message),
-                            status.status == "healthy" || status.status == "ok",
-                            &mut all_ok,
-                        );
-                    }
-                    Err(e) => {
-                        check(&format!("Graphiti status: {e}"), false, &mut all_ok);
-                    }
-                }
-            }
-            Err(e) => {
-                check(&format!("Graphiti MCP session: {e}"), false, &mut all_ok);
-            }
-        }
+    if venv_ok {
+        let graphiti_ok = check_graphiti_core(&python_path);
+        check("graphiti-core installed", graphiti_ok, &mut all_ok);
     }
 
-    // 4. Graph DB
+    // 4. Shim
+    let shim_path = Config::shim_path()?;
+    check(
+        &format!("Shim script: {}", shim_path.display()),
+        shim_path.exists(),
+        &mut all_ok,
+    );
+
+    // 5. Graph DB
     match config.graphiti.database.provider.as_str() {
         "falkordb" => {
             let falkor_ok = check_tcp("localhost", 6379).await;
@@ -84,6 +72,20 @@ pub async fn run() -> Result<()> {
         }
         other => {
             println!("  ? Unknown database provider: {other}");
+        }
+    }
+
+    // 6. End-to-end shim check (only if all prerequisites pass)
+    if all_ok {
+        match crate::graphiti::Client::new(&config).await {
+            Ok(mut client) => {
+                let healthy = client.health().await.unwrap_or(false);
+                check("Shim connection", healthy, &mut all_ok);
+                let _ = client.shutdown().await;
+            }
+            Err(e) => {
+                check(&format!("Shim connection: {e}"), false, &mut all_ok);
+            }
         }
     }
 
@@ -126,12 +128,19 @@ fn check_ollama_model(model: &str) -> bool {
     match output {
         Ok(o) => {
             let stdout = String::from_utf8_lossy(&o.stdout);
-            // Model names in `ollama list` may include :latest tag
             let base_name = model.split(':').next().unwrap_or(model);
             stdout.lines().any(|line| line.contains(base_name))
         }
         Err(_) => false,
     }
+}
+
+fn check_graphiti_core(python: &std::path::Path) -> bool {
+    Command::new(python)
+        .args(["-c", "from importlib.metadata import version; print(version('graphiti-core'))"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 async fn check_tcp(host: &str, port: u16) -> bool {

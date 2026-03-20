@@ -9,7 +9,6 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphitiConfig {
-    pub url: String,
     pub llm: LlmConfig,
     pub embedder: EmbedderConfig,
     pub database: DatabaseConfig,
@@ -36,13 +35,18 @@ pub struct EmbedderConfig {
 pub struct DatabaseConfig {
     pub provider: String,
     pub uri: String,
+    #[serde(default)]
+    pub user: Option<String>,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
+    pub database: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             graphiti: GraphitiConfig {
-                url: "http://localhost:8000".into(),
                 llm: LlmConfig {
                     provider: "openai".into(),
                     model: "llama3.2:3b".into(),
@@ -59,6 +63,9 @@ impl Default for Config {
                 database: DatabaseConfig {
                     provider: "falkordb".into(),
                     uri: "bolt://localhost:6379".into(),
+                    user: None,
+                    password: None,
+                    database: Some("default_db".into()),
                 },
             },
         }
@@ -82,6 +89,22 @@ impl Config {
 
     pub fn config_path() -> Result<PathBuf> {
         Ok(Self::config_dir()?.join("config.toml"))
+    }
+
+    pub fn venv_dir() -> Result<PathBuf> {
+        Ok(Self::data_dir()?.join("venv"))
+    }
+
+    pub fn shim_dir() -> Result<PathBuf> {
+        Ok(Self::data_dir()?.join("shim"))
+    }
+
+    pub fn shim_path() -> Result<PathBuf> {
+        Ok(Self::shim_dir()?.join("graphiti_shim.py"))
+    }
+
+    pub fn python_path() -> Result<PathBuf> {
+        Ok(Self::venv_dir()?.join("bin").join("python"))
     }
 
     pub fn load() -> Result<Self> {

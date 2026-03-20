@@ -12,6 +12,9 @@ pub struct AddMemoryRequest {
     pub source_description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+    /// Process synchronously (blocks until done). Default false (async queue).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sync: bool,
 }
 
 #[derive(Debug, Serialize)]

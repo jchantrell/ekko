@@ -1,307 +1,232 @@
 use anyhow::{bail, Context, Result};
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, ChildStdin, ChildStdout};
 
 use super::types::*;
-
-const MCP_SESSION_HEADER: &str = "mcp-session-id";
+use crate::config::Config;
 
 pub struct Client {
-    http: reqwest::Client,
-    base_url: String,
-    session_id: Option<String>,
+    child: Child,
+    stdin: ChildStdin,
+    reader: BufReader<ChildStdout>,
     next_id: AtomicU64,
 }
 
-#[derive(Serialize)]
-struct JsonRpcRequest<'a> {
-    jsonrpc: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<u64>,
-    method: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<serde_json::Value>,
-}
-
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct JsonRpcResponse {
-    #[allow(dead_code)]
-    jsonrpc: String,
     #[allow(dead_code)]
     id: Option<u64>,
     result: Option<serde_json::Value>,
     error: Option<JsonRpcError>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct JsonRpcError {
     #[allow(dead_code)]
     code: i64,
     message: String,
 }
 
-#[derive(Deserialize)]
-struct ToolResult {
-    content: Vec<ToolContent>,
-    #[serde(default)]
-    #[allow(dead_code)]
-    is_error: bool,
-}
-
-#[derive(Deserialize)]
-struct ToolContent {
-    #[allow(dead_code)]
-    r#type: String,
-    text: String,
-}
-
 impl Client {
-    pub fn new(base_url: &str) -> Self {
-        Self {
-            http: reqwest::Client::new(),
-            base_url: base_url.trim_end_matches('/').to_string(),
-            session_id: None,
-            next_id: AtomicU64::new(1),
+    /// Spawn the Python shim and send the `init` request.
+    pub async fn new(config: &Config) -> Result<Self> {
+        let python = Config::python_path()?;
+        let shim = Config::shim_path()?;
+
+        if !python.exists() {
+            bail!(
+                "Python venv not found at {}. Run `ekko init` to set up.",
+                python.display()
+            );
         }
+        if !shim.exists() {
+            bail!(
+                "Shim not found at {}. Run `ekko init` to set up.",
+                shim.display()
+            );
+        }
+
+        let mut child = tokio::process::Command::new(&python)
+            .arg(&shim)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::inherit())
+            .spawn()
+            .with_context(|| format!("failed to spawn {}", python.display()))?;
+
+        let stdin = child.stdin.take().context("no stdin on child")?;
+        let stdout = child.stdout.take().context("no stdout on child")?;
+        let reader = BufReader::new(stdout);
+
+        let mut client = Self {
+            child,
+            stdin,
+            reader,
+            next_id: AtomicU64::new(1),
+        };
+
+        // Send init with config
+        let init_params = serde_json::json!({
+            "llm": {
+                "provider": config.graphiti.llm.provider,
+                "model": config.graphiti.llm.model,
+                "api_url": config.graphiti.llm.api_url,
+                "api_key": config.graphiti.llm.api_key,
+            },
+            "embedder": {
+                "provider": config.graphiti.embedder.provider,
+                "model": config.graphiti.embedder.model,
+                "dimensions": config.graphiti.embedder.dimensions,
+                "api_url": config.graphiti.embedder.api_url,
+                "api_key": config.graphiti.embedder.api_key,
+            },
+            "database": {
+                "provider": config.graphiti.database.provider,
+                "uri": config.graphiti.database.uri,
+                "user": config.graphiti.database.user,
+                "password": config.graphiti.database.password,
+                "database": config.graphiti.database.database,
+            },
+        });
+
+        client.call_raw("init", init_params).await
+            .context("failed to initialize graphiti shim")?;
+
+        Ok(client)
     }
 
     fn next_id(&self) -> u64 {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn endpoint(&self) -> String {
-        format!("{}/mcp/", self.base_url)
-    }
+    async fn call_raw(
+        &mut self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let req = serde_json::json!({
+            "id": self.next_id(),
+            "method": method,
+            "params": params,
+        });
 
-    fn headers(&self) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        headers.insert(
-            ACCEPT,
-            HeaderValue::from_static("application/json, text/event-stream"),
-        );
-        if let Some(ref sid) = self.session_id
-            && let Ok(val) = HeaderValue::from_str(sid)
-        {
-            headers.insert(MCP_SESSION_HEADER, val);
-        }
-        headers
-    }
-
-    /// Parse a response that may be application/json or text/event-stream (SSE).
-    async fn parse_response(&self, resp: reqwest::Response) -> Result<Option<JsonRpcResponse>> {
-        let status = resp.status();
-        if status == reqwest::StatusCode::ACCEPTED {
-            return Ok(None);
-        }
-        if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
-            bail!("HTTP {status}: {body}");
-        }
-
-        let content_type = resp
-            .headers()
-            .get(CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("")
-            .to_string();
-
-        let body = resp.text().await.context("failed to read response body")?;
-
-        if content_type.contains("text/event-stream") {
-            // SSE: extract data lines
-            let mut data = String::new();
-            for line in body.lines() {
-                if let Some(payload) = line.strip_prefix("data: ") {
-                    data.push_str(payload);
-                }
-            }
-            if data.is_empty() {
-                bail!("empty SSE response");
-            }
-            let rpc: JsonRpcResponse =
-                serde_json::from_str(&data).context("failed to parse SSE JSON-RPC response")?;
-            Ok(Some(rpc))
-        } else {
-            let rpc: JsonRpcResponse =
-                serde_json::from_str(&body).context("failed to parse JSON-RPC response")?;
-            Ok(Some(rpc))
-        }
-    }
-
-    /// Initialize the MCP session. Must be called before any tool calls.
-    pub async fn initialize(&mut self) -> Result<()> {
-        let req = JsonRpcRequest {
-            jsonrpc: "2.0",
-            id: Some(self.next_id()),
-            method: "initialize",
-            params: Some(serde_json::json!({
-                "protocolVersion": "2025-03-26",
-                "capabilities": {},
-                "clientInfo": {
-                    "name": "ekko",
-                    "version": env!("CARGO_PKG_VERSION")
-                }
-            })),
-        };
-
-        let resp = self
-            .http
-            .post(self.endpoint())
-            .headers(self.headers())
-            .json(&req)
-            .send()
+        let mut line = serde_json::to_string(&req)?;
+        line.push('\n');
+        self.stdin
+            .write_all(line.as_bytes())
             .await
-            .context("failed to connect to Graphiti")?;
+            .context("failed to write to shim stdin")?;
+        self.stdin.flush().await?;
 
-        // Extract session ID from response headers
-        if let Some(sid) = resp.headers().get(MCP_SESSION_HEADER) {
-            self.session_id = Some(sid.to_str().unwrap_or_default().to_string());
-        }
-
-        let rpc = self
-            .parse_response(resp)
-            .await?
-            .context("no response from initialize")?;
-
-        if let Some(err) = rpc.error {
-            bail!("initialize failed: {}", err.message);
-        }
-
-        // Send initialized notification
-        let notif = JsonRpcRequest {
-            jsonrpc: "2.0",
-            id: None,
-            method: "notifications/initialized",
-            params: None,
-        };
-
-        self.http
-            .post(self.endpoint())
-            .headers(self.headers())
-            .json(&notif)
-            .send()
+        let mut response_line = String::new();
+        let n = self
+            .reader
+            .read_line(&mut response_line)
             .await
-            .context("failed to send initialized notification")?;
+            .context("failed to read from shim stdout")?;
 
-        Ok(())
+        if n == 0 {
+            bail!("shim process exited unexpectedly");
+        }
+
+        let resp: JsonRpcResponse = serde_json::from_str(&response_line)
+            .with_context(|| format!("failed to parse shim response: {response_line}"))?;
+
+        if let Some(err) = resp.error {
+            bail!("{}", err.message);
+        }
+
+        resp.result.context("missing result in shim response")
     }
 
-    /// Call a tool and return the parsed text content.
-    async fn call_tool(
-        &self,
-        name: &str,
-        arguments: serde_json::Value,
-    ) -> Result<String> {
-        let req = JsonRpcRequest {
-            jsonrpc: "2.0",
-            id: Some(self.next_id()),
-            method: "tools/call",
-            params: Some(serde_json::json!({
-                "name": name,
-                "arguments": arguments
-            })),
-        };
-
-        let resp = self
-            .http
-            .post(self.endpoint())
-            .headers(self.headers())
-            .json(&req)
-            .send()
-            .await
-            .with_context(|| format!("failed to call tool '{name}'"))?;
-
-        let rpc = self
-            .parse_response(resp)
-            .await?
-            .with_context(|| format!("no response from tool '{name}'"))?;
-
-        if let Some(err) = rpc.error {
-            bail!("tool '{name}' error: {}", err.message);
-        }
-
-        let result_val = rpc.result.context("missing result in response")?;
-        let tool_result: ToolResult =
-            serde_json::from_value(result_val).context("failed to parse tool result")?;
-
-        let text = tool_result
-            .content
-            .into_iter()
-            .map(|c| c.text)
-            .collect::<Vec<_>>()
-            .join("");
-
-        Ok(text)
-    }
-
-    /// Call a tool and deserialize the text content as JSON.
-    ///
-    /// If Graphiti returns an error envelope (`{"error": "..."}`) instead of
-    /// the expected response type, we surface it as an `anyhow::Error`.
-    async fn call_tool_json<T: serde::de::DeserializeOwned>(
-        &self,
-        name: &str,
-        arguments: serde_json::Value,
+    async fn call_json<T: serde::de::DeserializeOwned>(
+        &mut self,
+        method: &str,
+        params: serde_json::Value,
     ) -> Result<T> {
-        let text = self.call_tool(name, arguments).await?;
+        let val = self.call_raw(method, params).await?;
 
-        if let Ok(err) = serde_json::from_str::<ErrorResponse>(&text) {
+        if let Ok(err) = serde_json::from_value::<ErrorResponse>(val.clone()) {
             bail!("{}", err.error);
         }
 
-        serde_json::from_str(&text)
-            .with_context(|| format!("failed to parse response from '{name}': {text}"))
+        serde_json::from_value(val)
+            .with_context(|| format!("failed to deserialize response from '{method}'"))
     }
 
-    // --- Public API ---
+    // --- Public API (same signatures as the old HTTP client) ---
 
-    pub async fn add_memory(&self, req: AddMemoryRequest) -> Result<SuccessResponse> {
-        self.call_tool_json("add_memory", serde_json::to_value(req)?).await
-    }
-
-    pub async fn search_nodes(&self, req: SearchNodesRequest) -> Result<NodeSearchResponse> {
-        self.call_tool_json("search_nodes", serde_json::to_value(req)?).await
-    }
-
-    pub async fn search_facts(&self, req: SearchFactsRequest) -> Result<FactSearchResponse> {
-        self.call_tool_json("search_memory_facts", serde_json::to_value(req)?).await
-    }
-
-    pub async fn get_episodes(&self, req: GetEpisodesRequest) -> Result<EpisodeSearchResponse> {
-        self.call_tool_json("get_episodes", serde_json::to_value(req)?).await
-    }
-
-    pub async fn get_edge(&self, uuid: &str) -> Result<Fact> {
-        self.call_tool_json("get_entity_edge", serde_json::json!({ "uuid": uuid }))
+    pub async fn add_memory(&mut self, req: AddMemoryRequest) -> Result<SuccessResponse> {
+        self.call_json("add_memory", serde_json::to_value(req)?)
             .await
     }
 
-    pub async fn delete_edge(&self, uuid: &str) -> Result<SuccessResponse> {
-        self.call_tool_json("delete_entity_edge", serde_json::json!({ "uuid": uuid }))
+    pub async fn search_nodes(&mut self, req: SearchNodesRequest) -> Result<NodeSearchResponse> {
+        self.call_json("search_nodes", serde_json::to_value(req)?)
             .await
     }
 
-    pub async fn delete_episode(&self, uuid: &str) -> Result<SuccessResponse> {
-        self.call_tool_json("delete_episode", serde_json::json!({ "uuid": uuid }))
+    pub async fn search_facts(&mut self, req: SearchFactsRequest) -> Result<FactSearchResponse> {
+        self.call_json("search_facts", serde_json::to_value(req)?)
             .await
     }
 
-    pub async fn clear_graph(&self, req: ClearGraphRequest) -> Result<SuccessResponse> {
-        self.call_tool_json("clear_graph", serde_json::to_value(req)?).await
+    pub async fn get_episodes(
+        &mut self,
+        req: GetEpisodesRequest,
+    ) -> Result<EpisodeSearchResponse> {
+        self.call_json("get_episodes", serde_json::to_value(req)?)
+            .await
     }
 
-    pub async fn status(&self) -> Result<StatusResponse> {
-        self.call_tool_json("get_status", serde_json::json!({})).await
+    pub async fn get_edge(&mut self, uuid: &str) -> Result<Fact> {
+        self.call_json("get_entity_edge", serde_json::json!({ "uuid": uuid }))
+            .await
     }
 
-    /// Quick health check — can we reach Graphiti at all?
-    pub async fn health(&self) -> Result<bool> {
-        let url = format!("{}/health", self.base_url);
-        match self.http.get(&url).send().await {
-            Ok(resp) => Ok(resp.status().is_success()),
+    pub async fn delete_edge(&mut self, uuid: &str) -> Result<SuccessResponse> {
+        self.call_json("delete_entity_edge", serde_json::json!({ "uuid": uuid }))
+            .await
+    }
+
+    pub async fn delete_episode(&mut self, uuid: &str) -> Result<SuccessResponse> {
+        self.call_json("delete_episode", serde_json::json!({ "uuid": uuid }))
+            .await
+    }
+
+    pub async fn clear_graph(&mut self, req: ClearGraphRequest) -> Result<SuccessResponse> {
+        self.call_json("clear_graph", serde_json::to_value(req)?)
+            .await
+    }
+
+    pub async fn status(&mut self) -> Result<StatusResponse> {
+        self.call_json("status", serde_json::json!({})).await
+    }
+
+    pub async fn health(&mut self) -> Result<bool> {
+        match self.call_raw("health", serde_json::json!({})).await {
+            Ok(val) => {
+                let status = val
+                    .get("status")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("error");
+                Ok(status == "ok")
+            }
             Err(_) => Ok(false),
         }
+    }
+
+    pub async fn shutdown(&mut self) -> Result<()> {
+        let _ = self.call_raw("shutdown", serde_json::json!({})).await;
+        let _ = self.child.wait().await;
+        Ok(())
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        // Best-effort kill if still running
+        let _ = self.child.start_kill();
     }
 }

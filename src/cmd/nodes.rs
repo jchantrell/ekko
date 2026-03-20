@@ -11,7 +11,7 @@ pub async fn run(
     entity_type: Option<String>,
     max: Option<u32>,
 ) -> Result<()> {
-    let client = client::connect().await?;
+    let mut client = client::connect().await?;
 
     let group_ids = group
         .map(project::sanitize_group_id)

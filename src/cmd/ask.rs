@@ -12,7 +12,7 @@ pub async fn run(
     max_facts: Option<u32>,
     max_nodes: Option<u32>,
 ) -> Result<()> {
-    let client = client::connect().await?;
+    let mut client = client::connect().await?;
 
     let group_ids = group
         .map(project::sanitize_group_id)
