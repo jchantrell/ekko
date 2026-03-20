@@ -219,7 +219,7 @@ impl SessionParser for OpenCodeParser {
 
         let project_dir = worktree.as_deref().unwrap_or(&directory);
         let group_id = project::detect_group_id(std::path::Path::new(project_dir))
-            .or_else(|| session.project_hint.clone().map(project::sanitize_group_id))
+            .or_else(|| session.project_hint.clone())
             .unwrap_or_else(|| "unknown".into());
 
         let started_at = DateTime::from_timestamp_millis(time_created).unwrap_or_else(Utc::now);

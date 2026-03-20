@@ -10,7 +10,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     stream=sys.stderr,
 )
-logging.getLogger("graphiti_core.driver.falkordb_driver").setLevel(logging.WARNING)
+logging.getLogger("neo4j").setLevel(logging.WARNING)
 
 logger = logging.getLogger("ekko-shim")
 

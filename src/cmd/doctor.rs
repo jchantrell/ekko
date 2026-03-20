@@ -61,19 +61,8 @@ pub async fn run() -> Result<()> {
     );
 
     // 5. Graph DB
-    match config.graphiti.database.provider.as_str() {
-        "falkordb" => {
-            let falkor_ok = check_tcp("localhost", 6379).await;
-            check("FalkorDB reachable (port 6379)", falkor_ok, &mut all_ok);
-        }
-        "neo4j" => {
-            let neo4j_ok = check_tcp("localhost", 7687).await;
-            check("Neo4j reachable (port 7687)", neo4j_ok, &mut all_ok);
-        }
-        other => {
-            println!("  ? Unknown database provider: {other}");
-        }
-    }
+    let neo4j_ok = check_tcp("localhost", 7687).await;
+    check("Neo4j reachable (port 7687)", neo4j_ok, &mut all_ok);
 
     // 6. End-to-end shim check (only if all prerequisites pass)
     if all_ok {

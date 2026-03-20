@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 from graphiti_core import Graphiti
 from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
-from graphiti_core.driver.falkordb_driver import FalkorDriver
 from graphiti_core.edges import EntityEdge
 from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.llm_client.config import LLMConfig
@@ -46,38 +45,18 @@ async def do_init(params: dict) -> dict:
 
     cross_encoder = OpenAIRerankerClient(config=llm_config)
 
-    provider = db.get("provider", "falkordb")
-    if provider == "falkordb":
-        uri = db.get("uri", "bolt://localhost:6379")
-        host, port = drv.parse_uri(uri)
-        graph_driver = FalkorDriver(
-            host=host,
-            port=port,
-            password=db.get("password") or "",
-            database=db.get("database") or "default_db",
-        )
-        c = Graphiti(
-            graph_driver=graph_driver,
-            llm_client=llm_client,
-            embedder=embedder,
-            cross_encoder=cross_encoder,
-        )
-    elif provider == "neo4j":
-        c = Graphiti(
-            uri=db.get("uri", "bolt://localhost:7687"),
-            user=db.get("user", "neo4j"),
-            password=db.get("password", ""),
-            llm_client=llm_client,
-            embedder=embedder,
-            cross_encoder=cross_encoder,
-        )
-    else:
-        raise ValueError(f"unsupported database provider: {provider}")
+    c = Graphiti(
+        uri=db.get("uri", "bolt://localhost:7687"),
+        user=db.get("user", "neo4j"),
+        password=db.get("password", ""),
+        llm_client=llm_client,
+        embedder=embedder,
+        cross_encoder=cross_encoder,
+    )
 
     await c.build_indices_and_constraints()
     drv.set_client(c)
-    drv.set_default_database(c.driver._database)
-    logger.info("graphiti client initialized (provider=%s)", provider)
+    logger.info("graphiti client initialized (neo4j)")
     return {"message": "ok"}
 
 
@@ -131,8 +110,6 @@ async def do_search_facts(params: dict) -> dict:
     max_facts = params.get("max_facts") or 10
     center_node_uuid = params.get("center_node_uuid")
 
-    drv.ensure_driver_for_groups(group_ids)
-
     edges = await drv.client.search(
         group_ids=group_ids,
         query=query,
@@ -153,8 +130,6 @@ async def do_search_nodes(params: dict) -> dict:
     max_nodes = params.get("max_nodes") or 10
     entity_types = params.get("entity_types")
 
-    drv.ensure_driver_for_groups(group_ids)
-
     search_filters = SearchFilters(node_labels=entity_types)
     results = await drv.client.search_(
         query=query,
@@ -173,8 +148,6 @@ async def do_search_nodes(params: dict) -> dict:
 async def do_get_episodes(params: dict) -> dict:
     group_ids = params.get("group_ids") or []
     max_episodes = params.get("max_episodes") or 10
-
-    drv.ensure_driver_for_groups(group_ids)
 
     episodes = []
     if group_ids:
@@ -224,7 +197,6 @@ async def do_clear_graph(params: dict) -> dict:
     group_ids = params.get("group_ids") or []
     if not group_ids:
         return {"message": "No group IDs specified"}
-    drv.ensure_driver_for_groups(group_ids)
     await clear_data(drv.client.driver, group_ids=group_ids)
     return {"message": f"Graph cleared for groups: {', '.join(group_ids)}"}
 

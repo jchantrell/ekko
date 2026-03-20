@@ -10,7 +10,7 @@ pub async fn run(text: String, group: Option<String>, name: Option<String>, sour
     let mut client = client::connect().await?;
 
     let group_id = group
-        .map(project::sanitize_group_id)
+
         .or_else(|| project::detect_group_id(&std::env::current_dir().ok()?));
     let name = name.unwrap_or_else(|| Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string());
 

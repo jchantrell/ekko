@@ -9,7 +9,7 @@ use super::client;
 
 pub async fn run(group: Option<String>, yes: bool) -> Result<()> {
     let group = match group {
-        Some(g) => project::sanitize_group_id(g),
+        Some(g) => g,
         None => {
             let cwd = std::env::current_dir()?;
             project::detect_group_id(&cwd)

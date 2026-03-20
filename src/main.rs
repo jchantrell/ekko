@@ -115,7 +115,7 @@ enum Commands {
         yes: bool,
     },
 
-    /// Initialize ekko (set up Graphiti + FalkorDB via docker/podman, pull Ollama models)
+    /// Initialize ekko (set up Graphiti + Neo4j via docker/podman, pull Ollama models)
     Init,
 
     /// Start the MCP server over STDIO

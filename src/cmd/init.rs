@@ -23,7 +23,7 @@ pub async fn run() -> Result<()> {
             )
         })?;
 
-        init_falkordb(runtime)?;
+        init_neo4j(runtime)?;
     }
 
     init_python_venv()?;
@@ -52,8 +52,8 @@ fn container_runtime() -> Option<&'static str> {
     }
 }
 
-fn init_falkordb(runtime: &str) -> Result<()> {
-    println!("Setting up FalkorDB via {runtime}...");
+fn init_neo4j(runtime: &str) -> Result<()> {
+    println!("Setting up Neo4j via {runtime}...");
 
     let data_dir = Config::data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
@@ -62,7 +62,7 @@ fn init_falkordb(runtime: &str) -> Result<()> {
     std::fs::write(&compose_path, compose_content())
         .context("failed to write docker-compose.yml")?;
 
-    println!("  Pulling FalkorDB image...");
+    println!("  Pulling Neo4j image...");
     let output = Command::new(runtime)
         .current_dir(&data_dir)
         .args(["compose", "pull"])
@@ -74,7 +74,7 @@ fn init_falkordb(runtime: &str) -> Result<()> {
         bail!("{runtime} compose pull failed: {stderr}");
     }
 
-    println!("  Starting FalkorDB...");
+    println!("  Starting Neo4j...");
     let output = Command::new(runtime)
         .current_dir(&data_dir)
         .args(["compose", "up", "-d"])
@@ -86,7 +86,7 @@ fn init_falkordb(runtime: &str) -> Result<()> {
         bail!("{runtime} compose up failed: {stderr}");
     }
 
-    println!("  FalkorDB started.");
+    println!("  Neo4j started. Web UI at http://localhost:7474");
     Ok(())
 }
 
@@ -116,9 +116,9 @@ fn init_python_venv() -> Result<()> {
     }
 
     let pip = venv_dir.join("bin").join("pip");
-    println!("  Installing graphiti-core[falkordb]...");
+    println!("  Installing graphiti-core[neo4j]...");
     let output = Command::new(&pip)
-        .args(["install", "--quiet", "graphiti-core[falkordb]"])
+        .args(["install", "--quiet", "graphiti-core[neo4j]"])
         .output()
         .context("failed to run pip install")?;
 
@@ -218,22 +218,24 @@ fn find_python() -> Option<String> {
 
 fn compose_content() -> String {
     r#"services:
-  falkordb:
-    image: docker.io/falkordb/falkordb:latest
+  neo4j:
+    image: neo4j:5-community
     ports:
-      - "6379:6379"
-      - "3000:3000"
+      - "7687:7687"
+      - "7474:7474"
+    environment:
+      - NEO4J_AUTH=neo4j/ekko-memory
     volumes:
-      - falkordb_data:/data
+      - neo4j_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 20s
 
 volumes:
-  falkordb_data:
+  neo4j_data:
 "#
     .to_string()
 }

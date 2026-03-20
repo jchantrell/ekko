@@ -61,11 +61,11 @@ impl Default for Config {
                     api_key: "ollama".into(),
                 },
                 database: DatabaseConfig {
-                    provider: "falkordb".into(),
-                    uri: "bolt://localhost:6379".into(),
-                    user: None,
-                    password: None,
-                    database: Some("default_db".into()),
+                    provider: "neo4j".into(),
+                    uri: "bolt://localhost:7687".into(),
+                    user: Some("neo4j".into()),
+                    password: Some("ekko-memory".into()),
+                    database: None,
                 },
             },
         }

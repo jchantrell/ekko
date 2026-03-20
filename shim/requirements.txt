@@ -1,1 +1,1 @@
-graphiti-core[falkordb]
+graphiti-core[neo4j]

@@ -81,9 +81,7 @@ impl EkkoServer {
     }
 
     fn resolve_group_id(&self, explicit: Option<String>) -> Option<String> {
-        explicit
-            .map(project::sanitize_group_id)
-            .or_else(|| self.group_id.clone())
+        explicit.or_else(|| self.group_id.clone())
     }
 
     fn group_ids(&self, explicit: Option<String>) -> Option<Vec<String>> {

@@ -225,7 +225,7 @@ impl SessionParser for ClaudeCodeParser {
             .as_deref()
             .map(Path::new)
             .and_then(project::detect_group_id)
-            .or_else(|| session.project_hint.clone().map(project::sanitize_group_id))
+            .or_else(|| session.project_hint.clone())
             .unwrap_or_else(|| "unknown".into());
 
         let now = Utc::now();
