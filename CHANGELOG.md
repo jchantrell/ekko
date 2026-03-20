@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.0](https://github.com/jchantrell/ekko/compare/v0.10.1...v0.11.0) (2026-03-20)
+
+
+### Features
+
+* add daemon server with socket multiplexer and lifecycle management ([5aeed89](https://github.com/jchantrell/ekko/commit/5aeed89e0cff7ae5b691427d19662c6b71dbc7db))
+* add DaemonClient for Unix socket communication ([11c989b](https://github.com/jchantrell/ekko/commit/11c989bb933e14f6e5c86e368b05b7fceaa39845))
+* add periodic background sync to daemon ([4341c15](https://github.com/jchantrell/ekko/commit/4341c1525361a905fb2fa4251397cedd3267757c))
+* wire all clients through daemon with auto-start and fallback ([9ab75e6](https://github.com/jchantrell/ekko/commit/9ab75e6bd0c12e5e9290d8fce2fda25f79567659))
+
 ## [0.10.1](https://github.com/jchantrell/ekko/compare/v0.10.0...v0.10.1) (2026-03-20)
 
 
