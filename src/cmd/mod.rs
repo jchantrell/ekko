@@ -5,7 +5,7 @@ mod client;
 pub mod doctor;
 pub mod episodes;
 pub mod init;
-pub mod queue;
+
 pub mod nodes;
 pub mod rm;
 pub mod serve;
