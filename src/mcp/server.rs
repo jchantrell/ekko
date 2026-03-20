@@ -116,6 +116,7 @@ impl EkkoServer {
                 source_description: params.source_description.unwrap_or_default(),
                 uuid: None,
                 sync: false,
+                reference_time: None,
             })
             .await
             .map_err(|e| McpError::internal_error(format!("add_memory failed: {e}"), None))?;

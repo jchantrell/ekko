@@ -22,6 +22,7 @@ pub async fn run(text: String, group: Option<String>, name: Option<String>, sour
         source_description: "ekko cli".into(),
         uuid: None,
         sync: true,
+        reference_time: None,
     };
 
     let resp = client.add_memory(req).await?;

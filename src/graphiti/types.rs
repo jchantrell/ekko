@@ -15,6 +15,9 @@ pub struct AddMemoryRequest {
     /// Process synchronously (blocks until done). Default false (async queue).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub sync: bool,
+    /// ISO-8601 timestamp for when this memory is from. Defaults to now if omitted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference_time: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

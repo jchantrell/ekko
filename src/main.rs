@@ -3,6 +3,7 @@ mod config;
 mod graphiti;
 mod mcp;
 mod project;
+mod session;
 
 use clap::{Parser, Subcommand};
 
@@ -132,6 +133,37 @@ enum Commands {
         #[arg(long)]
         check: bool,
     },
+
+    /// Index agent sessions into the knowledge graph
+    Sync {
+        /// Re-index all sessions (ignore fingerprints)
+        #[arg(long)]
+        full: bool,
+
+        /// Only index sessions from this agent (claude-code, opencode)
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Only index sessions for this project
+        #[arg(long, short)]
+        group: Option<String>,
+
+        /// Only index sessions after this date (YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Skip LLM summarization (extractive fallback)
+        #[arg(long)]
+        no_llm: bool,
+
+        /// Show what would be indexed without doing it
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Maximum number of sessions to index
+        #[arg(long)]
+        limit: Option<usize>,
+    },
 }
 
 #[tokio::main]
@@ -159,5 +191,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status => cmd::status::run().await,
 
         Commands::Update { check } => cmd::update::run(check).await,
+        Commands::Sync { full, agent, group, since, no_llm, dry_run, limit } => {
+            cmd::sync::run(full, agent, group, since, no_llm, dry_run, limit).await
+        }
     }
 }

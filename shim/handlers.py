@@ -89,6 +89,15 @@ async def do_add_memory(params: dict) -> dict:
     source_description = params.get("source_description", "")
     uuid = params.get("uuid")
     sync = params.get("sync", False)
+    ref_time_str = params.get("reference_time")
+
+    if ref_time_str:
+        try:
+            ref_time = datetime.fromisoformat(ref_time_str)
+        except (ValueError, TypeError):
+            ref_time = datetime.now(timezone.utc)
+    else:
+        ref_time = datetime.now(timezone.utc)
 
     try:
         episode_type = EpisodeType[source.lower()]
@@ -103,7 +112,7 @@ async def do_add_memory(params: dict) -> dict:
             source_description=source_description,
             source=episode_type,
             group_id=group_id,
-            reference_time=datetime.now(timezone.utc),
+            reference_time=ref_time,
             uuid=uuid,
         )
         logger.info("episode processed for group %s", group_id)
