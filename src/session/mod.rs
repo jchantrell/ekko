@@ -6,8 +6,7 @@ pub mod summarize;
 use anyhow::Result;
 use chrono::{Duration, Utc};
 
-use crate::config::Config;
-use crate::graphiti::{self, AddMemoryRequest};
+use crate::graphiti::AddMemoryRequest;
 use normalize::*;
 use parsers::SessionParser;
 
@@ -126,8 +125,7 @@ pub async fn sync(opts: SyncOptions) -> Result<SyncReport> {
     }
 
     // Phase 2: Summarize + ingest (async, needs Graphiti client).
-    let config = Config::load()?;
-    let mut client = graphiti::Client::new(&config).await?;
+    let mut client = crate::cmd::client::connect().await?;
     let mut indexed = 0usize;
     let mut ingest_errors = 0usize;
 
@@ -225,7 +223,7 @@ fn build_parsers(opts: &SyncOptions) -> Vec<Box<dyn SessionParser>> {
 
 async fn ingest(
     job: &IndexJob,
-    client: &mut graphiti::Client,
+    client: &mut crate::graphiti::Client,
     no_llm: bool,
 ) -> Result<()> {
     let summary = summarize::summarize(&job.parsed, no_llm).await?;
@@ -263,7 +261,8 @@ fn truncate_id(id: &str) -> &str {
     }
 }
 
-/// Run a background sync scoped to the current project. Intended for `ekko serve` startup.
+/// Run a background sync. Used by the daemon's periodic sync.
+#[allow(dead_code)]
 pub async fn background_sync() {
     let group = std::env::current_dir()
         .ok()

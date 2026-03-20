@@ -8,7 +8,6 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::config::Config;
 use crate::graphiti::{self, *};
 use crate::project;
 
@@ -349,10 +348,9 @@ impl ServerHandler for EkkoServer {
 impl EkkoServer {
     /// Build a server from config, auto-detecting project from cwd.
     pub async fn from_config() -> anyhow::Result<Self> {
-        let config = Config::load()?;
-        let client = graphiti::Client::new(&config)
+        let client = crate::cmd::client::connect()
             .await
-            .map_err(|e| anyhow::anyhow!("failed to initialize graphiti: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("failed to connect to graphiti: {e}"))?;
 
         let group_id = std::env::current_dir()
             .ok()
