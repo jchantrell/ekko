@@ -14,20 +14,31 @@ Or build from source:
 cargo install --git https://github.com/jchantrell/ekko
 ```
 
+## Requirements
+
+- Python 3.10+ (for the graphiti-core shim)
+- Docker or Podman (for FalkorDB)
+- [Ollama](https://ollama.com) (LLM and embedding inference)
+
 ## Getting Started
 
 ```bash
-ekko init       # set up Graphiti, graph DB, pull Ollama models
+ekko init       # set up FalkorDB, Python venv, pull Ollama models
 ekko doctor     # verify everything is working
 ekko update     # check for updates
 ```
+
+`ekko init` will:
+1. Start a FalkorDB container via Docker/Podman
+2. Create a Python venv with `graphiti-core` installed
+3. Pull the default Ollama models (`qwen3:8b`, `qwen3-embedding:8b`)
 
 ## CLI
 
 ```bash
 ekko add "prefers pnpm over npm"           # store a memory
 ekko ask "what package manager"            # search facts
-ekko nodes                                 # list entities
+ekko nodes "search query"                  # search entities
 ekko episodes                              # list recent episodes
 ekko show <uuid>                           # inspect a fact
 ekko rm fact <uuid>                        # delete a fact
@@ -37,7 +48,7 @@ ekko clear my-project                      # wipe a specific project's memory
 
 ## MCP Server
 
-ekko exposes 6 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `status`.
+ekko exposes 7 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `queue`, `status`.
 
 ### Claude Code
 
@@ -89,6 +100,7 @@ Use ekko for all persistent memory. It's an MCP server backed by a temporal know
 - `forget` — remove incorrect facts by UUID
 - `entities` — explore the knowledge graph (people, technologies, concepts)
 - `episodes` — list memory ingestion history
+- `queue` — check memory processing queue status
 - `status` — check if the memory system is healthy
 
 ### When to use memory
