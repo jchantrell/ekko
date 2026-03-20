@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/jchantrell/ekko/compare/v0.9.0...v0.10.0) (2026-03-20)
+
+
+### Features
+
+* migrate from FalkorDB to Neo4j ([6bdbd53](https://github.com/jchantrell/ekko/commit/6bdbd53ea34637e8f9f053a0af21299c04d531ed))
+
+
+### Bug Fixes
+
+* normalize group_id comparison in session filter ([da656e2](https://github.com/jchantrell/ekko/commit/da656e27161916bee64deb6d09101b3b1a085648))
+
 ## [0.9.0](https://github.com/jchantrell/ekko/compare/v0.8.0...v0.9.0) (2026-03-20)
 
 
