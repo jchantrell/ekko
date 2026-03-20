@@ -107,6 +107,16 @@ impl Config {
         Ok(Self::venv_dir()?.join("bin").join("python"))
     }
 
+    #[allow(dead_code)]
+    pub fn socket_path() -> Result<PathBuf> {
+        Ok(Self::data_dir()?.join("daemon.sock"))
+    }
+
+    #[allow(dead_code)]
+    pub fn pid_path() -> Result<PathBuf> {
+        Ok(Self::data_dir()?.join("daemon.pid"))
+    }
+
     pub fn load() -> Result<Self> {
         let path = Self::config_path()?;
         if !path.exists() {
