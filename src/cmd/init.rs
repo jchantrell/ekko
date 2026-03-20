@@ -12,24 +12,19 @@ const SHIM_FILES: &[(&str, &str)] = &[
 ];
 
 pub async fn run() -> Result<()> {
-    let reinit = Config::exists();
+    let runtime = container_runtime().ok_or_else(|| {
+        anyhow::anyhow!(
+            "No container runtime found.\n\
+             Install Docker: https://docs.docker.com/get-docker/\n\
+             Install Podman: https://podman.io/docs/installation"
+        )
+    })?;
 
-    if !reinit {
-        let runtime = container_runtime().ok_or_else(|| {
-            anyhow::anyhow!(
-                "No container runtime found.\n\
-                 Install Docker: https://docs.docker.com/get-docker/\n\
-                 Install Podman: https://podman.io/docs/installation"
-            )
-        })?;
-
-        init_neo4j(runtime)?;
-    }
-
+    init_neo4j(runtime)?;
     init_python_venv()?;
     write_shim()?;
 
-    if !reinit {
+    if !Config::exists() {
         let config = Config::default();
         config.save().context("failed to save config")?;
         println!("\nConfig written to {}", Config::config_path()?.display());
@@ -219,7 +214,7 @@ fn find_python() -> Option<String> {
 fn compose_content() -> String {
     r#"services:
   neo4j:
-    image: neo4j:5-community
+    image: docker.io/library/neo4j:5-community
     ports:
       - "7687:7687"
       - "7474:7474"
