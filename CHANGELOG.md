@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/jchantrell/ekko/compare/v0.11.0...v0.12.0) (2026-03-20)
+
+
+### Features
+
+* add ekko queue CLI command ([86fb596](https://github.com/jchantrell/ekko/commit/86fb596b7ca8ac4f27c063a9ef91ade456d6e6ff))
+* scope ekko sync to current project by default, add --all flag ([7b2a864](https://github.com/jchantrell/ekko/commit/7b2a86469618f28a144685d3b07d4abfad92b003))
+
+
+### Bug Fixes
+
+* prevent concurrent daemon starts with flock ([88f32f2](https://github.com/jchantrell/ekko/commit/88f32f20a882beb31e700623a3842d58929f1262))
+
 ## [0.11.0](https://github.com/jchantrell/ekko/compare/v0.10.1...v0.11.0) (2026-03-20)
 
 
