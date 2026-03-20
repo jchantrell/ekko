@@ -27,7 +27,7 @@ async def do_init(params: dict) -> dict:
     llm = params["llm"]
     emb = params["embedder"]
 
-    model = llm.get("model", "llama3.2:3b")
+    model = llm.get("model", "qwen3:8b")
     llm_config = LLMConfig(
         api_key=llm.get("api_key", "ollama"),
         base_url=llm.get("api_url", "http://localhost:11434/v1"),
@@ -39,8 +39,8 @@ async def do_init(params: dict) -> dict:
     emb_config = OpenAIEmbedderConfig(
         api_key=emb.get("api_key", "ollama"),
         base_url=emb.get("api_url", "http://localhost:11434/v1"),
-        embedding_model=emb.get("model", "nomic-embed-text"),
-        embedding_dim=emb.get("dimensions", 768),
+        embedding_model=emb.get("model", "qwen3-embedding:8b"),
+        embedding_dim=emb.get("dimensions", 4096),
     )
     embedder = OpenAIEmbedder(config=emb_config)
 

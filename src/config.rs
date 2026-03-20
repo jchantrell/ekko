@@ -49,14 +49,14 @@ impl Default for Config {
             graphiti: GraphitiConfig {
                 llm: LlmConfig {
                     provider: "openai".into(),
-                    model: "llama3.2:3b".into(),
+                    model: "qwen3:8b".into(),
                     api_url: "http://localhost:11434/v1".into(),
                     api_key: "ollama".into(),
                 },
                 embedder: EmbedderConfig {
                     provider: "openai".into(),
-                    model: "nomic-embed-text".into(),
-                    dimensions: 768,
+                    model: "qwen3-embedding:8b".into(),
+                    dimensions: 4096,
                     api_url: "http://localhost:11434/v1".into(),
                     api_key: "ollama".into(),
                 },

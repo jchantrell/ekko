@@ -167,7 +167,7 @@ fn ensure_ollama_models() {
         return;
     }
 
-    let models = ["nomic-embed-text", "llama3.2:3b"];
+    let models = ["qwen3-embedding:8b", "qwen3:8b"];
     for model in models {
         if has_ollama_model(model) {
             println!("  Ollama model ready: {model}");
