@@ -10,35 +10,27 @@ use super::lifecycle;
 
 /// Run the daemon: own the shim, listen on socket, multiplex requests.
 pub async fn run() -> Result<()> {
-    // Check if already running
     if let Some(pid) = lifecycle::running_pid() {
         anyhow::bail!("daemon already running (PID {pid})");
     }
 
-    // Clean up stale socket
     lifecycle::remove_socket();
-
-    // Write PID
     lifecycle::write_pid()?;
 
-    // Spawn the single Python shim
     let config = Config::load()?;
     let client = DirectClient::new(&config)
         .await
         .context("failed to start graphiti shim")?;
     let client = std::sync::Arc::new(Mutex::new(client));
 
-    // Bind the socket
     let socket_path = Config::socket_path()?;
     let listener = UnixListener::bind(&socket_path)
         .with_context(|| format!("failed to bind {}", socket_path.display()))?;
 
     eprintln!("ekko daemon listening on {}", socket_path.display());
 
-    // Start background sync
     tokio::spawn(super::sync::run(client.clone()));
 
-    // Install shutdown signal handler
     let shutdown = tokio::signal::ctrl_c();
     tokio::pin!(shutdown);
 
@@ -62,13 +54,36 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // Cleanup
     let mut c = client.lock().await;
     let _ = c.shutdown().await;
     lifecycle::remove_socket();
     lifecycle::remove_pid();
 
     Ok(())
+}
+
+/// Try to respawn the shim if it died. Returns true if respawn succeeded.
+async fn respawn_shim(client: &Mutex<DirectClient>) -> bool {
+    let config = match Config::load() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("failed to load config for shim respawn: {e}");
+            return false;
+        }
+    };
+
+    match DirectClient::new(&config).await {
+        Ok(new_client) => {
+            let mut c = client.lock().await;
+            *c = new_client;
+            eprintln!("shim respawned successfully");
+            true
+        }
+        Err(e) => {
+            eprintln!("failed to respawn shim: {e}");
+            false
+        }
+    }
 }
 
 async fn handle_connection(
@@ -87,7 +102,7 @@ async fn handle_connection(
         };
 
         if n == 0 {
-            break; // Client disconnected
+            break;
         }
 
         let req: serde_json::Value = match serde_json::from_str(&line) {
@@ -109,14 +124,12 @@ async fn handle_connection(
             .unwrap_or("");
         let params = req.get("params").cloned().unwrap_or(serde_json::json!({}));
 
-        // Handle daemon-specific methods locally
         if method == "daemon_shutdown" {
             let resp = serde_json::json!({
                 "id": req_id,
                 "result": {"message": "shutdown requested"}
             });
             let _ = write_response(&mut writer, &resp).await;
-            // Signal the main loop to stop
             std::process::exit(0);
         }
 
@@ -132,9 +145,26 @@ async fn handle_connection(
             continue;
         }
 
-        // Forward everything else to the shim
-        let mut c = client.lock().await;
-        let result = c.call_raw(method, params).await;
+        // Forward to shim, respawn on failure
+        let result = {
+            let mut c = client.lock().await;
+            c.call_raw(method, params.clone()).await
+        };
+
+        let result = match result {
+            Ok(val) => Ok(val),
+            Err(e) if e.to_string().contains("shim") || e.to_string().contains("stdin") => {
+                eprintln!("shim appears dead ({e}), attempting respawn...");
+                if respawn_shim(&client).await {
+                    // Retry the request on the new shim
+                    let mut c = client.lock().await;
+                    c.call_raw(method, params).await
+                } else {
+                    Err(e)
+                }
+            }
+            Err(e) => Err(e),
+        };
 
         let resp = match result {
             Ok(val) => serde_json::json!({"id": req_id, "result": val}),
