@@ -28,13 +28,14 @@ class QueueService:
     def __init__(self):
         self._queues: dict[str, asyncio.Queue] = {}
         self._workers: dict[str, bool] = {}
+        self._processing: dict[str, str | None] = {}
 
     async def enqueue(
-        self, group_id: str, func: Callable[[], Awaitable[None]]
+        self, group_id: str, name: str, func: Callable[[], Awaitable[None]]
     ) -> int:
         if group_id not in self._queues:
             self._queues[group_id] = asyncio.Queue()
-        await self._queues[group_id].put(func)
+        await self._queues[group_id].put((name, func))
         if not self._workers.get(group_id, False):
             asyncio.create_task(self._worker(group_id))
         return self._queues[group_id].qsize()
@@ -43,17 +44,34 @@ class QueueService:
         self._workers[group_id] = True
         try:
             while True:
-                func = await self._queues[group_id].get()
+                name, func = await self._queues[group_id].get()
+                self._processing[group_id] = name
                 try:
                     await func()
                 except Exception:
                     logger.exception("episode processing failed for %s", group_id)
                 finally:
+                    self._processing[group_id] = None
                     self._queues[group_id].task_done()
         except asyncio.CancelledError:
             pass
         finally:
             self._workers[group_id] = False
+            self._processing.pop(group_id, None)
+
+    def status(self) -> list[dict]:
+        groups = set(self._queues.keys()) | set(self._processing.keys())
+        result = []
+        for gid in sorted(groups):
+            pending = self._queues[gid].qsize() if gid in self._queues else 0
+            processing = self._processing.get(gid)
+            if pending > 0 or processing is not None:
+                result.append({
+                    "group_id": gid,
+                    "processing": processing,
+                    "pending": pending,
+                })
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +232,7 @@ async def do_add_memory(params: dict) -> dict:
         await process()
         return {"message": f"Episode '{name}' processed in group '{group_id}'"}
 
-    await queue.enqueue(group_id, process)
+    await queue.enqueue(group_id, name, process)
     return {"message": f"Episode '{name}' queued for processing in group '{group_id}'"}
 
 
@@ -367,6 +385,10 @@ async def do_status(_params: dict) -> dict:
         return {"status": "error", "message": str(e)}
 
 
+async def do_queue_status(_params: dict) -> dict:
+    return {"groups": queue.status()}
+
+
 async def do_shutdown(_params: dict) -> dict:
     if client is not None:
         await client.close()
@@ -414,6 +436,7 @@ METHODS = {
     "clear_graph": do_clear_graph,
     "health": do_health,
     "status": do_status,
+    "queue_status": do_queue_status,
     "shutdown": do_shutdown,
 }
 

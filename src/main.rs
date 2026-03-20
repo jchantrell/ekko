@@ -126,6 +126,9 @@ enum Commands {
     /// Show Graphiti connection status
     Status,
 
+    /// Show the memory processing queue
+    Queue,
+
     /// Update ekko to the latest version
     Update {
         /// Only check for updates, don't install
@@ -157,6 +160,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Serve => cmd::serve::run().await,
         Commands::Doctor => cmd::doctor::run().await,
         Commands::Status => cmd::status::run().await,
+        Commands::Queue => cmd::queue::run().await,
         Commands::Update { check } => cmd::update::run(check).await,
     }
 }

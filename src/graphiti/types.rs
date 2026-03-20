@@ -129,6 +129,19 @@ pub struct EpisodeSearchResponse {
     pub episodes: Vec<Episode>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct QueueStatusResponse {
+    #[serde(default)]
+    pub groups: Vec<QueueGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct QueueGroup {
+    pub group_id: String,
+    pub processing: Option<String>,
+    pub pending: u32,
+}
+
 impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)?;

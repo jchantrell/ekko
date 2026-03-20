@@ -204,6 +204,10 @@ impl Client {
         self.call_json("status", serde_json::json!({})).await
     }
 
+    pub async fn queue_status(&mut self) -> Result<QueueStatusResponse> {
+        self.call_json("queue_status", serde_json::json!({})).await
+    }
+
     pub async fn health(&mut self) -> Result<bool> {
         match self.call_raw("health", serde_json::json!({})).await {
             Ok(val) => {

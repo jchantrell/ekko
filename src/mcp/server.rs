@@ -275,6 +275,37 @@ impl EkkoServer {
     }
 
     #[tool(
+        name = "queue",
+        description = "Show the memory processing queue. Returns which episodes are currently being processed and how many are pending per group."
+    )]
+    async fn queue(&self) -> Result<CallToolResult, McpError> {
+        let mut client = self.client.lock().await;
+        let resp = client.queue_status().await.map_err(|e| {
+            McpError::internal_error(format!("queue_status failed: {e}"), None)
+        })?;
+
+        if resp.groups.is_empty() {
+            return Ok(CallToolResult::success(vec![Content::text(
+                "Queue is empty.",
+            )]));
+        }
+
+        let mut output = String::new();
+        for group in &resp.groups {
+            let status = match &group.processing {
+                Some(name) => format!("processing: {name}"),
+                None => "idle".into(),
+            };
+            output.push_str(&format!(
+                "{} — {status}, {} pending\n",
+                group.group_id, group.pending
+            ));
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
         name = "status",
         description = "Check ekko's health — is Graphiti reachable? Is the MCP session active? Returns system status for diagnostics."
     )]
