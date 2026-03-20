@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/jchantrell/ekko/compare/v0.10.0...v0.10.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* always run container setup on init, use full image ref for podman ([0548499](https://github.com/jchantrell/ekko/commit/0548499a8a58f50e4d1175945049d2fdd5123802))
+
 ## [0.10.0](https://github.com/jchantrell/ekko/compare/v0.9.0...v0.10.0) (2026-03-20)
 
 
