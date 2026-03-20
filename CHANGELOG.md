@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/jchantrell/ekko/compare/v0.6.0...v0.7.0) (2026-03-20)
+
+
+### Features
+
+* add queue status command and MCP tool ([ef72553](https://github.com/jchantrell/ekko/commit/ef72553ce194f479db869dae8055db042927f5e0))
+
+
+### Bug Fixes
+
+* update to latest release regardless of semver compatibility ([2a92716](https://github.com/jchantrell/ekko/commit/2a927168fd1c2f418691ccdf5212cd531656d100))
+
 ## [0.6.0](https://github.com/jchantrell/ekko/compare/v0.5.3...v0.6.0) (2026-03-19)
 
 
