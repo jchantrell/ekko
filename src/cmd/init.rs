@@ -3,7 +3,13 @@ use std::process::Command;
 
 use crate::config::Config;
 
-const SHIM_SCRIPT: &str = include_str!("../../shim/graphiti_shim.py");
+const SHIM_FILES: &[(&str, &str)] = &[
+    ("__main__.py", include_str!("../../shim/__main__.py")),
+    ("ingestion.py", include_str!("../../shim/ingestion.py")),
+    ("driver.py", include_str!("../../shim/driver.py")),
+    ("formatting.py", include_str!("../../shim/formatting.py")),
+    ("handlers.py", include_str!("../../shim/handlers.py")),
+];
 
 pub async fn run() -> Result<()> {
     let reinit = Config::exists();
@@ -142,9 +148,12 @@ fn write_shim() -> Result<()> {
     let shim_dir = Config::shim_dir()?;
     std::fs::create_dir_all(&shim_dir)?;
 
-    let shim_path = Config::shim_path()?;
-    std::fs::write(&shim_path, SHIM_SCRIPT).context("failed to write shim script")?;
-    println!("  Shim written to {}", shim_path.display());
+    for (name, content) in SHIM_FILES {
+        let path = shim_dir.join(name);
+        std::fs::write(&path, content)
+            .with_context(|| format!("failed to write {}", path.display()))?;
+    }
+    println!("  Shim written to {}", shim_dir.display());
 
     Ok(())
 }

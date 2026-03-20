@@ -32,7 +32,7 @@ impl Client {
     /// Spawn the Python shim and send the `init` request.
     pub async fn new(config: &Config) -> Result<Self> {
         let python = Config::python_path()?;
-        let shim = Config::shim_path()?;
+        let shim_dir = Config::shim_dir()?;
 
         if !python.exists() {
             bail!(
@@ -40,15 +40,15 @@ impl Client {
                 python.display()
             );
         }
-        if !shim.exists() {
+        if !shim_dir.join("__main__.py").exists() {
             bail!(
                 "Shim not found at {}. Run `ekko init` to set up.",
-                shim.display()
+                shim_dir.display()
             );
         }
 
         let mut child = tokio::process::Command::new(&python)
-            .arg(&shim)
+            .arg(&shim_dir)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::inherit())

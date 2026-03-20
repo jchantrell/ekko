@@ -100,7 +100,7 @@ impl Config {
     }
 
     pub fn shim_path() -> Result<PathBuf> {
-        Ok(Self::shim_dir()?.join("graphiti_shim.py"))
+        Ok(Self::shim_dir()?.join("__main__.py"))
     }
 
     pub fn python_path() -> Result<PathBuf> {
