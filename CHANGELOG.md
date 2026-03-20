@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/jchantrell/ekko/compare/v0.7.1...v0.8.0) (2026-03-20)
+
+
+### Features
+
+* default to qwen3 models for LLM and embeddings ([6a6f19b](https://github.com/jchantrell/ekko/commit/6a6f19ba0e88193df76c638a5561a195dc0a2a8b))
+
 ## [0.7.1](https://github.com/jchantrell/ekko/compare/v0.7.0...v0.7.1) (2026-03-20)
 
 
