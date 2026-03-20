@@ -161,9 +161,13 @@ enum Commands {
         #[arg(long)]
         agent: Option<String>,
 
-        /// Only index sessions for this project
+        /// Project to index (auto-detected from cwd)
         #[arg(long, short)]
         group: Option<String>,
+
+        /// Index all projects instead of just the current one
+        #[arg(long)]
+        all: bool,
 
         /// Only index sessions after this date (YYYY-MM-DD)
         #[arg(long)]
@@ -208,8 +212,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status => cmd::status::run().await,
 
         Commands::Update { check } => cmd::update::run(check).await,
-        Commands::Sync { full, agent, group, since, no_llm, dry_run, limit } => {
-            cmd::sync::run(full, agent, group, since, no_llm, dry_run, limit).await
+        Commands::Sync { full, agent, group, all, since, no_llm, dry_run, limit } => {
+            cmd::sync::run(full, agent, group, all, since, no_llm, dry_run, limit).await
         }
         Commands::Daemon { command } => match command {
             DaemonCommand::Start => cmd::daemon::start().await,

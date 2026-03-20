@@ -1,13 +1,16 @@
 use anyhow::Result;
 use chrono::NaiveDate;
 
+use crate::project;
 use crate::session;
 use crate::session::normalize::{Agent, SyncOptions};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run(
     full: bool,
     agent: Option<String>,
     group: Option<String>,
+    all: bool,
     since: Option<String>,
     no_llm: bool,
     dry_run: bool,
@@ -28,10 +31,16 @@ pub async fn run(
         })
         .transpose()?;
 
+    let group_filter = if all {
+        None
+    } else {
+        group.or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
+    };
+
     let opts = SyncOptions {
         full,
         agent_filter,
-        group_filter: group,
+        group_filter,
         since,
         no_llm,
         dry_run,
