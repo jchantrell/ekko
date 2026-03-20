@@ -17,19 +17,19 @@ cargo install --git https://github.com/jchantrell/ekko
 ## Requirements
 
 - Python 3.10+ (for the graphiti-core shim)
-- Docker or Podman (for FalkorDB)
+- Docker or Podman (for Neo4j)
 - [Ollama](https://ollama.com) (LLM and embedding inference)
 
 ## Getting Started
 
 ```bash
-ekko init       # set up FalkorDB, Python venv, pull Ollama models
+ekko init       # set up Neo4j, Python venv, pull Ollama models
 ekko doctor     # verify everything is working
 ekko update     # check for updates
 ```
 
 `ekko init` will:
-1. Start a FalkorDB container via Docker/Podman
+1. Start a Neo4j container via Docker/Podman
 2. Create a Python venv with `graphiti-core` installed
 3. Pull the default Ollama models (`qwen3:8b`, `qwen3-embedding:8b`)
 
@@ -44,6 +44,8 @@ ekko show <uuid>                           # inspect a fact
 ekko rm fact <uuid>                        # delete a fact
 ekko clear                                 # wipe current project's memory
 ekko clear my-project                      # wipe a specific project's memory
+ekko sync                                  # index agent sessions (last 30 days)
+ekko sync --full                           # index all agent sessions
 ```
 
 ## MCP Server
@@ -51,6 +53,14 @@ ekko clear my-project                      # wipe a specific project's memory
 ekko exposes 7 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `queue`, `status`.
 
 ### Claude Code
+
+Global (all projects):
+
+```bash
+claude mcp add --scope user ekko -- ekko serve
+```
+
+Project-level:
 
 ```bash
 claude mcp add ekko -- ekko serve
@@ -117,7 +127,7 @@ Use ekko for all persistent memory. It's an MCP server backed by a temporal know
 
 ### Scoping
 
-Memory is **project-scoped** by default. The `group_id` is auto-detected from the working directory name (e.g. `/home/user/projects/my-app` → `my_app`). Hyphens are replaced with underscores for FalkorDB compatibility (e.g. `my-project` → `my_project`). You can override with an explicit `group_id` param.
+Memory is **project-scoped** by default. The `group_id` is auto-detected from the working directory name (e.g. `/home/user/projects/my-app` → `my-app`). You can override with an explicit `group_id` param.
 
 ### Global memory
 
