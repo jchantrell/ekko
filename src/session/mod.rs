@@ -39,10 +39,14 @@ pub async fn sync(opts: SyncOptions) -> Result<SyncReport> {
     }
 
     if let Some(ref group) = opts.group_filter {
+        let normalized = crate::project::sanitize_group_id(group.clone()).to_ascii_lowercase();
         all_sessions.retain(|s| {
             s.project_hint
                 .as_deref()
-                .is_some_and(|h| h.eq_ignore_ascii_case(group))
+                .is_some_and(|h| {
+                    crate::project::sanitize_group_id(h.to_string()).to_ascii_lowercase()
+                        == normalized
+                })
         });
     }
 
