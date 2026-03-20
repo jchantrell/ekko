@@ -8,6 +8,7 @@ pub mod episodes;
 pub mod init;
 
 pub mod nodes;
+pub mod queue;
 pub mod rm;
 pub mod serve;
 pub mod show;
