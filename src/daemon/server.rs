@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixListener;
 use tokio::sync::Mutex;
@@ -7,6 +8,11 @@ use crate::config::Config;
 use crate::graphiti::direct::DirectClient;
 
 use super::lifecycle;
+
+pub struct DaemonState {
+    client: Mutex<DirectClient>,
+    busy: AtomicBool,
+}
 
 /// Run the daemon: own the shim, listen on socket, multiplex requests.
 pub async fn run() -> Result<()> {
@@ -21,7 +27,11 @@ pub async fn run() -> Result<()> {
     let client = DirectClient::new(&config)
         .await
         .context("failed to start graphiti shim")?;
-    let client = std::sync::Arc::new(Mutex::new(client));
+
+    let state = std::sync::Arc::new(DaemonState {
+        client: Mutex::new(client),
+        busy: AtomicBool::new(false),
+    });
 
     let socket_path = Config::socket_path()?;
     let listener = UnixListener::bind(&socket_path)
@@ -29,7 +39,7 @@ pub async fn run() -> Result<()> {
 
     eprintln!("ekko daemon listening on {}", socket_path.display());
 
-    tokio::spawn(super::sync::run(client.clone()));
+    tokio::spawn(super::sync::run_with_state(state.clone()));
 
     let shutdown = tokio::signal::ctrl_c();
     tokio::pin!(shutdown);
@@ -39,8 +49,8 @@ pub async fn run() -> Result<()> {
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((stream, _)) => {
-                        let client = client.clone();
-                        tokio::spawn(handle_connection(stream, client));
+                        let state = state.clone();
+                        tokio::spawn(handle_connection(stream, state));
                     }
                     Err(e) => {
                         eprintln!("accept error: {e}");
@@ -54,7 +64,7 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    let mut c = client.lock().await;
+    let mut c = state.client.lock().await;
     let _ = c.shutdown().await;
     lifecycle::remove_socket();
     lifecycle::remove_pid();
@@ -62,8 +72,7 @@ pub async fn run() -> Result<()> {
     Ok(())
 }
 
-/// Try to respawn the shim if it died. Returns true if respawn succeeded.
-async fn respawn_shim(client: &Mutex<DirectClient>) -> bool {
+async fn respawn_shim(state: &DaemonState) -> bool {
     let config = match Config::load() {
         Ok(c) => c,
         Err(e) => {
@@ -74,7 +83,7 @@ async fn respawn_shim(client: &Mutex<DirectClient>) -> bool {
 
     match DirectClient::new(&config).await {
         Ok(new_client) => {
-            let mut c = client.lock().await;
+            let mut c = state.client.lock().await;
             *c = new_client;
             eprintln!("shim respawned successfully");
             true
@@ -86,9 +95,17 @@ async fn respawn_shim(client: &Mutex<DirectClient>) -> bool {
     }
 }
 
+/// Methods that are fast and can use try_lock instead of blocking.
+fn is_lightweight(method: &str) -> bool {
+    matches!(
+        method,
+        "queue_status" | "health" | "status"
+    )
+}
+
 async fn handle_connection(
     stream: tokio::net::UnixStream,
-    client: std::sync::Arc<Mutex<DirectClient>>,
+    state: std::sync::Arc<DaemonState>,
 ) {
     let (reader, mut writer) = tokio::io::split(stream);
     let mut reader = BufReader::new(reader);
@@ -139,31 +156,59 @@ async fn handle_connection(
                 "result": {
                     "status": "running",
                     "pid": std::process::id(),
+                    "busy": state.busy.load(Ordering::Relaxed),
                 }
             });
             let _ = write_response(&mut writer, &resp).await;
             continue;
         }
 
-        // Forward to shim, respawn on failure
-        let result = {
-            let mut c = client.lock().await;
-            c.call_raw(method, params.clone()).await
-        };
-
-        let result = match result {
-            Ok(val) => Ok(val),
-            Err(e) if e.to_string().contains("shim") || e.to_string().contains("stdin") => {
-                eprintln!("shim appears dead ({e}), attempting respawn...");
-                if respawn_shim(&client).await {
-                    // Retry the request on the new shim
-                    let mut c = client.lock().await;
-                    c.call_raw(method, params).await
-                } else {
-                    Err(e)
+        let result = if is_lightweight(method) {
+            // Non-blocking: try to get the lock, return shim-busy if held
+            match state.client.try_lock() {
+                Ok(mut c) => c.call_raw(method, params).await,
+                Err(_) => {
+                    // Shim is busy with another request — return a synthetic response
+                    let resp = match method {
+                        "queue_status" => serde_json::json!({
+                            "id": req_id,
+                            "result": {"groups": [], "daemon_busy": true}
+                        }),
+                        "health" => serde_json::json!({
+                            "id": req_id,
+                            "result": {"status": "busy"}
+                        }),
+                        _ => serde_json::json!({
+                            "id": req_id,
+                            "result": {"status": "busy", "message": "shim is processing another request"}
+                        }),
+                    };
+                    let _ = write_response(&mut writer, &resp).await;
+                    continue;
                 }
             }
-            Err(e) => Err(e),
+        } else {
+            // Blocking: wait for the lock
+            state.busy.store(true, Ordering::Relaxed);
+            let result = {
+                let mut c = state.client.lock().await;
+                c.call_raw(method, params.clone()).await
+            };
+            state.busy.store(false, Ordering::Relaxed);
+
+            match result {
+                Ok(val) => Ok(val),
+                Err(e) if e.to_string().contains("shim") || e.to_string().contains("stdin") => {
+                    eprintln!("shim appears dead ({e}), attempting respawn...");
+                    if respawn_shim(&state).await {
+                        let mut c = state.client.lock().await;
+                        c.call_raw(method, params).await
+                    } else {
+                        Err(e)
+                    }
+                }
+                Err(e) => Err(e),
+            }
         };
 
         let resp = match result {

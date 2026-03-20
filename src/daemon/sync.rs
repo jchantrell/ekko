@@ -1,8 +1,5 @@
 use std::time::Duration;
 
-use tokio::sync::Mutex;
-
-use crate::graphiti::direct::DirectClient;
 use crate::session;
 use crate::session::normalize::SyncOptions;
 
@@ -10,17 +7,17 @@ const INITIAL_DELAY: Duration = Duration::from_secs(5);
 const SYNC_INTERVAL: Duration = Duration::from_secs(30 * 60); // 30 minutes
 const SYNC_LIMIT: usize = 50;
 
-/// Run periodic background sync using the daemon's direct client.
-pub async fn run(client: std::sync::Arc<Mutex<DirectClient>>) {
+/// Run periodic background sync.
+pub async fn run_with_state(_state: std::sync::Arc<super::server::DaemonState>) {
     tokio::time::sleep(INITIAL_DELAY).await;
 
     loop {
-        run_once(&client).await;
+        run_once().await;
         tokio::time::sleep(SYNC_INTERVAL).await;
     }
 }
 
-async fn run_once(_client: &std::sync::Arc<Mutex<DirectClient>>) {
+async fn run_once() {
     let opts = SyncOptions {
         full: false,
         agent_filter: None,
