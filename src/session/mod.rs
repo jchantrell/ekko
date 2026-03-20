@@ -262,16 +262,20 @@ fn truncate_id(id: &str) -> &str {
     }
 }
 
-/// Run a background sync with default options. Intended for `ekko serve` startup.
+/// Run a background sync scoped to the current project. Intended for `ekko serve` startup.
 pub async fn background_sync() {
+    let group = std::env::current_dir()
+        .ok()
+        .and_then(|cwd| crate::project::detect_group_id(&cwd));
+
     let opts = SyncOptions {
         full: false,
         agent_filter: None,
-        group_filter: None,
+        group_filter: group,
         since: None,
         no_llm: false,
         dry_run: false,
-        limit: None,
+        limit: Some(50),
     };
 
     match sync(opts).await {
