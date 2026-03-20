@@ -35,6 +35,9 @@ pub async fn run() -> Result<()> {
 
     eprintln!("ekko daemon listening on {}", socket_path.display());
 
+    // Start background sync
+    tokio::spawn(super::sync::run(client.clone()));
+
     // Install shutdown signal handler
     let shutdown = tokio::signal::ctrl_c();
     tokio::pin!(shutdown);
