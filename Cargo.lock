@@ -564,6 +564,7 @@ dependencies = [
  "chrono",
  "clap",
  "dirs",
+ "libc",
  "reqwest 0.13.2",
  "rmcp",
  "rusqlite",

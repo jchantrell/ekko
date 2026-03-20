@@ -1,5 +1,6 @@
 mod cmd;
 mod config;
+mod daemon;
 mod graphiti;
 mod mcp;
 mod project;
@@ -20,6 +21,16 @@ enum RmTarget {
     Fact { uuid: String },
     /// Delete an episode by UUID
     Episode { uuid: String },
+}
+
+#[derive(Subcommand)]
+enum DaemonCommand {
+    /// Start the daemon (foreground)
+    Start,
+    /// Stop the running daemon
+    Stop,
+    /// Show daemon status
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -134,6 +145,12 @@ enum Commands {
         check: bool,
     },
 
+    /// Manage the ekko daemon
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommand,
+    },
+
     /// Index agent sessions into the knowledge graph
     Sync {
         /// Re-index all sessions (ignore fingerprints)
@@ -194,5 +211,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::Sync { full, agent, group, since, no_llm, dry_run, limit } => {
             cmd::sync::run(full, agent, group, since, no_llm, dry_run, limit).await
         }
+        Commands::Daemon { command } => match command {
+            DaemonCommand::Start => cmd::daemon::start().await,
+            DaemonCommand::Stop => cmd::daemon::stop().await,
+            DaemonCommand::Status => cmd::daemon::status().await,
+        },
     }
 }

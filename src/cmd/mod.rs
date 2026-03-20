@@ -2,6 +2,7 @@ pub mod add;
 pub mod ask;
 pub mod clear;
 mod client;
+pub mod daemon;
 pub mod doctor;
 pub mod episodes;
 pub mod init;
