@@ -1,4 +1,5 @@
 mod client;
+pub mod direct;
 #[allow(dead_code)]
 mod types;
 
