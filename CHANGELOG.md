@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/jchantrell/ekko/compare/v0.12.0...v0.12.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* auto-respawn shim when it dies during request handling ([0565d79](https://github.com/jchantrell/ekko/commit/0565d797e672f7446dbc26ba1b6e357f7822d2b7))
+* non-blocking queue/health/status when shim is busy ([e23a6ed](https://github.com/jchantrell/ekko/commit/e23a6edb222a608cb533bf94790300e65aa14855))
+
 ## [0.12.0](https://github.com/jchantrell/ekko/compare/v0.11.0...v0.12.0) (2026-03-20)
 
 
