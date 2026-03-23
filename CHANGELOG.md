@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.13.0](https://github.com/jchantrell/ekko/compare/v0.12.1...v0.13.0) (2026-03-23)
+
+
+### Features
+
+* add 'ekko serve' command to start MCP server ([7cb57f7](https://github.com/jchantrell/ekko/commit/7cb57f7c7ec4158d2195f6d81678f38c5ba14aea))
+* add CLI commands (add, ask, show, rm, nodes, episodes, clear) ([7664c69](https://github.com/jchantrell/ekko/commit/7664c69677ac06cf7d2fd44ccc4fe036bf8c328d))
+* add daemon server with socket multiplexer and lifecycle management ([5aeed89](https://github.com/jchantrell/ekko/commit/5aeed89e0cff7ae5b691427d19662c6b71dbc7db))
+* add DaemonClient for Unix socket communication ([11c989b](https://github.com/jchantrell/ekko/commit/11c989bb933e14f6e5c86e368b05b7fceaa39845))
+* add ekko queue CLI command ([86fb596](https://github.com/jchantrell/ekko/commit/86fb596b7ca8ac4f27c063a9ef91ade456d6e6ff))
+* add global memory support via _global group_id ([321d4a1](https://github.com/jchantrell/ekko/commit/321d4a1f03b3daea088be32a8f375a5ba44e1c7b))
+* add license ([fea62c4](https://github.com/jchantrell/ekko/commit/fea62c4b4a19f68e2261d122e3644cdb69b64239))
+* add MCP server with 6 tools over STDIO ([352e011](https://github.com/jchantrell/ekko/commit/352e01147c080dd11a7986acba02911373caaabc))
+* add periodic background sync to daemon ([4341c15](https://github.com/jchantrell/ekko/commit/4341c1525361a905fb2fa4251397cedd3267757c))
+* add project detection from cwd for group_id scoping ([10e2945](https://github.com/jchantrell/ekko/commit/10e294515746159e4e710ca31eaaa86cb7b1e730))
+* add queue status command and MCP tool ([ef72553](https://github.com/jchantrell/ekko/commit/ef72553ce194f479db869dae8055db042927f5e0))
+* add rm subcommands for facts and episodes ([2bf3f97](https://github.com/jchantrell/ekko/commit/2bf3f975004ce10369eab25fe69a2f9a466a09c3))
+* add rmcp, chrono, schemars, tracing-subscriber deps ([dbcae1f](https://github.com/jchantrell/ekko/commit/dbcae1f113258272f7e5060a525a0a171414c659))
+* add self-update command and release pipeline ([077c3ae](https://github.com/jchantrell/ekko/commit/077c3ae36a52257cb8ce878bf01b5d6421641850))
+* add shared client initialization helper for CLI commands ([0431aca](https://github.com/jchantrell/ekko/commit/0431aca8cb9af69be823c3a376f44e652f3d6927))
+* auto-detect group from cwd in clear command ([918543d](https://github.com/jchantrell/ekko/commit/918543d80748fb43cb7ca8aceba8941ea5dc4a54))
+* default to qwen3 models for LLM and embeddings ([6a6f19b](https://github.com/jchantrell/ekko/commit/6a6f19ba0e88193df76c638a5561a195dc0a2a8b))
+* migrate from FalkorDB to Neo4j ([6bdbd53](https://github.com/jchantrell/ekko/commit/6bdbd53ea34637e8f9f053a0af21299c04d531ed))
+* scope ekko sync to current project by default, add --all flag ([7b2a864](https://github.com/jchantrell/ekko/commit/7b2a86469618f28a144685d3b07d4abfad92b003))
+* session indexer (`ekko sync`) ([492886a](https://github.com/jchantrell/ekko/commit/492886acf131820fb4417b68f4cc51d3883486a8))
+* support podman as container runtime ([ec58c63](https://github.com/jchantrell/ekko/commit/ec58c63407e1f4bbaa7c65a92771bcae38a1fa94))
+* v0.1 scaffold with Graphiti client, CLI, init, and doctor ([2eadae1](https://github.com/jchantrell/ekko/commit/2eadae1f7fc69d5ddac923178602e77b62f6d3e0))
+* wire all clients through daemon with auto-start and fallback ([9ab75e6](https://github.com/jchantrell/ekko/commit/9ab75e6bd0c12e5e9290d8fce2fda25f79567659))
+* wire CLI commands into main and clean up dead code ([047a0f4](https://github.com/jchantrell/ekko/commit/047a0f43875ab3f68fa3742ae59c8d08832f10cd))
+
+
+### Bug Fixes
+
+* always run container setup on init, use full image ref for podman ([0548499](https://github.com/jchantrell/ekko/commit/0548499a8a58f50e4d1175945049d2fdd5123802))
+* auto-respawn shim when it dies during request handling ([0565d79](https://github.com/jchantrell/ekko/commit/0565d797e672f7446dbc26ba1b6e357f7822d2b7))
+* collapse nested if to satisfy clippy ([a65d655](https://github.com/jchantrell/ekko/commit/a65d655bd865d1debd41a86c77fed2840541e4c8))
+* drop ekko_ prefix from MCP tool names ([7fd3100](https://github.com/jchantrell/ekko/commit/7fd31005f7fa55283dd26fcb00bd96f7f57c9335))
+* handle Graphiti error responses in call_tool_json ([1d5c3dd](https://github.com/jchantrell/ekko/commit/1d5c3dd9c5fc1112dd3399359297d3755a9f2f1d))
+* install to ~/.local/bin, no sudo required ([b8e5225](https://github.com/jchantrell/ekko/commit/b8e5225f9b1ee0e644025545d01b9b1353d33343))
+* non-blocking queue/health/status when shim is busy ([e23a6ed](https://github.com/jchantrell/ekko/commit/e23a6edb222a608cb533bf94790300e65aa14855))
+* normalize group_id comparison in session filter ([da656e2](https://github.com/jchantrell/ekko/commit/da656e27161916bee64deb6d09101b3b1a085648))
+* package binary at archive root for self-update ([b6cf661](https://github.com/jchantrell/ekko/commit/b6cf661fd21ed3783cb6f39057c05be547294366))
+* prevent concurrent daemon starts with flock ([88f32f2](https://github.com/jchantrell/ekko/commit/88f32f20a882beb31e700623a3842d58929f1262))
+* remove queue CLI command, keep as MCP-only tool ([4244cc9](https://github.com/jchantrell/ekko/commit/4244cc92fe7a165b6047f75f7e709f345ccb202f))
+* resolve clippy collapsible_if warning ([ae42d4d](https://github.com/jchantrell/ekko/commit/ae42d4d8b259b69ee5bfc83ee921c335b31a371f))
+* resolve clippy collapsible_if warnings ([45798cd](https://github.com/jchantrell/ekko/commit/45798cd5c84b4361893a7eeaedecf01cf937b461))
+* route Graphiti LLM calls to local Ollama via OPENAI_BASE_URL ([897c4af](https://github.com/jchantrell/ekko/commit/897c4af0e0fad55c1e0a01d723458ef30903dda0))
+* sanitize hyphens in group_id for FalkorDB/RediSearch compatibility ([a1ab31e](https://github.com/jchantrell/ekko/commit/a1ab31e4f0128b88d1712ebff2a4f90e97d843fb))
+* scope background sync to current project, cap at 50 sessions ([40bd6fa](https://github.com/jchantrell/ekko/commit/40bd6fa5bff58d8bce3fd4178940b4a4ba83df53))
+* show full UUIDs in list output, truncate multiline node summaries ([8286df2](https://github.com/jchantrell/ekko/commit/8286df2269fa339bd1f138ce72856787aa7cfa3c))
+* update to latest release regardless of semver compatibility ([2a92716](https://github.com/jchantrell/ekko/commit/2a927168fd1c2f418691ccdf5212cd531656d100))
+* use fully qualified image names for podman, write config before model pulls ([bab4544](https://github.com/jchantrell/ekko/commit/bab454491e5d284f7a29acd825accd32ed4bbb2f))
+* use sudo for chmod in install script ([0f225ce](https://github.com/jchantrell/ekko/commit/0f225ce0e6e96a3cee4e04ef8da0d0d85e574183))
+
+
+### Reverts
+
+* remove global memory, keep hyphen sanitization and rm subcommands ([fe8cedb](https://github.com/jchantrell/ekko/commit/fe8cedb505b4905009a4cf2d350d3fede65862f4))
+
 ## [0.12.1](https://github.com/jchantrell/ekko/compare/v0.12.0...v0.12.1) (2026-03-23)
 
 
