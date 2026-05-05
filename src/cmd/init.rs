@@ -88,7 +88,47 @@ fn init_neo4j(runtime: &str) -> Result<()> {
     }
 
     println!("  Neo4j started. Web UI at http://localhost:7474");
+
+    if runtime == "podman" {
+        enable_podman_persistence();
+    }
+
     Ok(())
+}
+
+fn enable_podman_persistence() {
+    let linger = Command::new("loginctl")
+        .args(["enable-linger", ""])
+        .output();
+
+    match linger {
+        Ok(o) if o.status.success() => {
+            println!("  Enabled loginctl linger for boot persistence.");
+        }
+        _ => {
+            println!(
+                "  WARNING: Could not enable loginctl linger.\n  \
+                 Run `loginctl enable-linger $USER` manually so Neo4j starts on boot."
+            );
+            return;
+        }
+    }
+
+    let restart_svc = Command::new("systemctl")
+        .args(["--user", "enable", "podman-restart.service"])
+        .output();
+
+    match restart_svc {
+        Ok(o) if o.status.success() => {
+            println!("  Enabled podman-restart service for container auto-start.");
+        }
+        _ => {
+            println!(
+                "  WARNING: Could not enable podman-restart.service.\n  \
+                 Run `systemctl --user enable podman-restart.service` manually."
+            );
+        }
+    }
 }
 
 fn init_python_venv() -> Result<()> {
@@ -240,6 +280,7 @@ fn compose_content() -> String {
     r#"services:
   neo4j:
     image: docker.io/library/neo4j:5-community
+    restart: unless-stopped
     ports:
       - "7687:7687"
       - "7474:7474"

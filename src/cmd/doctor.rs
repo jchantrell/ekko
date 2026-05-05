@@ -64,6 +64,14 @@ pub async fn run() -> Result<()> {
     let neo4j_ok = check_tcp("localhost", 7687).await;
     check("Neo4j reachable (port 7687)", neo4j_ok, &mut all_ok);
 
+    if neo4j_ok && check_command("podman", &["--version"]) {
+        let linger_ok = check_linger();
+        check("Boot persistence (loginctl linger)", linger_ok, &mut all_ok);
+
+        let restart_ok = check_podman_restart();
+        check("Boot persistence (podman-restart)", restart_ok, &mut all_ok);
+    }
+
     // 6. End-to-end shim check (only if all prerequisites pass)
     if all_ok {
         match crate::graphiti::Client::new(&config).await {
@@ -136,4 +144,24 @@ async fn check_tcp(host: &str, port: u16) -> bool {
     tokio::net::TcpStream::connect(format!("{host}:{port}"))
         .await
         .is_ok()
+}
+
+fn check_linger() -> bool {
+    Command::new("loginctl")
+        .args(["show-user", "", "-p", "Linger"])
+        .output()
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .trim()
+                .eq_ignore_ascii_case("Linger=yes")
+        })
+        .unwrap_or(false)
+}
+
+fn check_podman_restart() -> bool {
+    Command::new("systemctl")
+        .args(["--user", "is-enabled", "podman-restart.service"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
