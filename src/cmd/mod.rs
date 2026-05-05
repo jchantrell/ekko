@@ -5,7 +5,7 @@ pub mod client;
 pub mod daemon;
 pub mod doctor;
 pub mod episodes;
-pub mod groups;
+pub mod origins;
 pub mod init;
 
 pub mod nodes;

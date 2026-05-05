@@ -159,13 +159,12 @@ async def do_add_memory(params: dict) -> dict:
 
 
 async def do_search_facts(params: dict) -> dict:
-    group_ids = params.get("group_ids") or []
     query = params["query"]
     max_facts = params.get("max_facts") or 10
     center_node_uuid = params.get("center_node_uuid")
 
     edges = await drv.client.search(
-        group_ids=group_ids,
+        group_ids=[],
         query=query,
         num_results=max_facts,
         center_node_uuid=center_node_uuid,
@@ -179,7 +178,6 @@ async def do_search_facts(params: dict) -> dict:
 
 
 async def do_search_nodes(params: dict) -> dict:
-    group_ids = params.get("group_ids") or []
     query = params["query"]
     max_nodes = params.get("max_nodes") or 10
     entity_types = params.get("entity_types")
@@ -188,7 +186,7 @@ async def do_search_nodes(params: dict) -> dict:
     results = await drv.client.search_(
         query=query,
         config=NODE_HYBRID_SEARCH_RRF,
-        group_ids=group_ids,
+        group_ids=[],
         search_filter=search_filters,
     )
 
@@ -200,33 +198,34 @@ async def do_search_nodes(params: dict) -> dict:
 
 
 async def do_get_episodes(params: dict) -> dict:
-    group_ids = params.get("group_ids") or []
     max_episodes = params.get("max_episodes") or 10
 
-    episodes = []
-    if group_ids:
-        episodes = await EpisodicNode.get_by_group_ids(
-            drv.client.driver, group_ids, limit=max_episodes
+    async with drv.client.driver.session() as session:
+        result = await session.run(
+            "MATCH (n:Episodic) "
+            "RETURN n ORDER BY n.created_at DESC LIMIT $limit",
+            limit=max_episodes,
         )
+        records = [record async for record in result]
+
+    episodes = []
+    for r in records:
+        node = r["n"]
+        created = node.get("created_at")
+        source = node.get("source", "")
+        episodes.append({
+            "uuid": node.get("uuid", ""),
+            "name": node.get("name", ""),
+            "content": node.get("content"),
+            "created_at": created.isoformat() if hasattr(created, "isoformat") else str(created) if created else None,
+            "source": source.value if hasattr(source, "value") else str(source),
+            "source_description": node.get("source_description"),
+            "group_id": node.get("group_id"),
+        })
 
     return {
-        "message": "Episodes retrieved successfully"
-        if episodes
-        else "No episodes found",
-        "episodes": [
-            {
-                "uuid": ep.uuid,
-                "name": ep.name,
-                "content": ep.content,
-                "created_at": ep.created_at.isoformat() if ep.created_at else None,
-                "source": ep.source.value
-                if hasattr(ep.source, "value")
-                else str(ep.source),
-                "source_description": ep.source_description,
-                "group_id": ep.group_id,
-            }
-            for ep in episodes
-        ],
+        "message": "Episodes retrieved successfully" if episodes else "No episodes found",
+        "episodes": episodes,
     }
 
 
@@ -248,11 +247,11 @@ async def do_delete_episode(params: dict) -> dict:
 
 
 async def do_clear_graph(params: dict) -> dict:
-    group_ids = params.get("group_ids") or []
-    if not group_ids:
-        return {"message": "No group IDs specified"}
-    await clear_data(drv.client.driver, group_ids=group_ids)
-    return {"message": f"Graph cleared for groups: {', '.join(group_ids)}"}
+    origins = params.get("group_ids") or []
+    if not origins:
+        return {"message": "No origins specified"}
+    await clear_data(drv.client.driver, group_ids=origins)
+    return {"message": f"Graph cleared for origins: {', '.join(origins)}"}
 
 
 async def do_health(_params: dict) -> dict:

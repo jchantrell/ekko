@@ -7,17 +7,17 @@ use crate::project;
 
 use super::client;
 
-pub async fn run(group: Option<String>, yes: bool) -> Result<()> {
-    let group = match group {
-        Some(g) => g,
+pub async fn run(origin: Option<String>, yes: bool) -> Result<()> {
+    let origin = match origin {
+        Some(o) => o,
         None => {
             let cwd = std::env::current_dir()?;
-            project::detect_group_id(&cwd)
-                .ok_or_else(|| anyhow::anyhow!("could not detect project from cwd — use --group"))?
+            project::detect_origin(&cwd)
+                .ok_or_else(|| anyhow::anyhow!("could not detect project from cwd — use --origin"))?
         }
     };
     if !yes {
-        print!("This will permanently delete all memories for group '{group}'. Continue? [y/N] ");
+        print!("This will permanently delete all memories for origin '{origin}'. Continue? [y/N] ");
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -32,7 +32,7 @@ pub async fn run(group: Option<String>, yes: bool) -> Result<()> {
 
     let resp = client
         .clear_graph(ClearGraphRequest {
-            group_ids: Some(vec![group]),
+            origins: Some(vec![origin]),
         })
         .await?;
 

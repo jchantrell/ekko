@@ -221,10 +221,10 @@ impl SessionParser for ClaudeCodeParser {
             }
         }
 
-        let group_id = cwd
+        let origin = cwd
             .as_deref()
             .map(Path::new)
-            .and_then(project::detect_group_id)
+            .and_then(project::detect_origin)
             .or_else(|| session.project_hint.clone())
             .unwrap_or_else(|| "unknown".into());
 
@@ -252,7 +252,7 @@ impl SessionParser for ClaudeCodeParser {
         Ok(ParsedSession {
             session_id: session.session_id.clone(),
             agent: Agent::ClaudeCode,
-            group_id,
+            origin,
             started_at: started,
             ended_at: ended,
             turns,

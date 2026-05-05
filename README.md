@@ -79,23 +79,23 @@ After changing providers, re-run `ekko init` to install the required dependencie
 
 ```bash
 ekko add "prefers pnpm over npm"           # store a memory
-ekko ask "what package manager"            # search facts
-ekko nodes "search query"                  # search entities
-ekko episodes                              # list recent episodes
+ekko ask "what package manager"            # search facts (searches all memories)
+ekko nodes "search query"                  # search entities (searches all memories)
+ekko episodes                              # list recent episodes (all origins)
 ekko show <uuid>                           # inspect a fact
 ekko rm fact <uuid>                        # delete a fact
-ekko groups                                # list all project scopes
-ekko groups --stats                        # include entity/episode counts
-ekko groups set myproj --name "My Project" --description "Web app backend"
-ekko clear                                 # wipe current project's memory
-ekko clear my-project                      # wipe a specific project's memory
+ekko origins                               # list all known origins
+ekko origins --stats                       # include entity/episode counts
+ekko origins set myproj --name "My Project" --description "Web app backend"
+ekko clear                                 # wipe current project's memories
+ekko clear my-project                      # wipe a specific origin's memories
 ekko sync                                  # index agent sessions (last 30 days)
 ekko sync --full                           # index all agent sessions
 ```
 
 ## MCP Server
 
-ekko exposes 9 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `groups`, `set_group`, `queue`, `status`.
+ekko exposes 9 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `origins`, `set_origin`, `queue`, `status`.
 
 ### Claude Code
 
@@ -155,8 +155,8 @@ Use ekko for all persistent memory. It's an MCP server backed by a temporal know
 - `forget` — remove incorrect facts by UUID
 - `entities` — explore the knowledge graph (people, technologies, concepts)
 - `episodes` — list memory ingestion history
-- `groups` — list all project scopes (discover what's in memory)
-- `set_group` — set a display name and description for a project scope
+- `origins` — list all known project sources (discover what's in memory)
+- `set_origin` — set a display name and description for a project origin
 - `queue` — check memory processing queue status
 - `status` — check if the memory system is healthy
 
@@ -172,14 +172,7 @@ Use ekko for all persistent memory. It's an MCP server backed by a temporal know
 - A dependency gotcha or environment quirk
 - A pattern that worked well (or failed)
 
-### Scoping
+### How memory works
 
-Memory is **project-scoped** by default. The `group_id` is auto-detected from the working directory name (e.g. `/home/user/projects/my-app` → `my-app`). You can override with an explicit `group_id` param.
-
-### Global memory
-
-For knowledge that transcends any single project — user preferences, tooling choices, workflow patterns, environment details — pass `group_id: "_global"` explicitly. Use your judgement on what qualifies:
-
-- **Global**: "prefers Rust or Golang", "uses CachyOS", "always use conventional commits"
-- **Project**: bug patterns, architecture decisions, dependency notes, codebase-specific learnings
+All memories live in a single unified graph — `recall` searches across everything, regardless of which project stored it. Each memory is tagged with an **origin** (auto-detected from the working directory) so you can see where it came from, but origins never filter search results.
 ```

@@ -167,7 +167,7 @@ impl DaemonClient {
             .await
     }
 
-    pub async fn list_groups(&mut self, req: ListGroupsRequest) -> Result<ListGroupsResponse> {
+    pub async fn list_origins(&mut self, req: ListOriginsRequest) -> Result<ListOriginsResponse> {
         self.call_json("list_groups", serde_json::to_value(req)?)
             .await
     }

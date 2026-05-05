@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct AddMemoryRequest {
     pub name: String,
     pub episode_body: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_id: Option<String>,
+    #[serde(rename = "group_id", skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
     pub source: String,
     #[serde(default)]
     pub source_description: String,
@@ -24,8 +24,6 @@ pub struct AddMemoryRequest {
 pub struct SearchNodesRequest {
     pub query: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_nodes: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity_types: Option<Vec<String>>,
@@ -35,8 +33,6 @@ pub struct SearchNodesRequest {
 pub struct SearchFactsRequest {
     pub query: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_facts: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center_node_uuid: Option<String>,
@@ -45,19 +41,17 @@ pub struct SearchFactsRequest {
 #[derive(Debug, Serialize)]
 pub struct GetEpisodesRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_episodes: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ClearGraphRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_ids: Option<Vec<String>>,
+    #[serde(rename = "group_ids", skip_serializing_if = "Option::is_none")]
+    pub origins: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ListGroupsRequest {
+pub struct ListOriginsRequest {
     #[serde(default)]
     pub include_stats: bool,
 }
@@ -72,7 +66,8 @@ pub struct Node {
     pub labels: Vec<String>,
     pub created_at: Option<String>,
     pub summary: Option<String>,
-    pub group_id: String,
+    #[serde(rename = "group_id")]
+    pub origin: String,
     #[serde(default)]
     pub attributes: serde_json::Value,
 }
@@ -96,7 +91,8 @@ pub struct Episode {
     pub created_at: Option<String>,
     pub source: Option<String>,
     pub source_description: Option<String>,
-    pub group_id: Option<String>,
+    #[serde(rename = "group_id")]
+    pub origin: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -146,20 +142,22 @@ pub struct QueueStatusResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct QueueGroup {
-    pub group_id: String,
+    #[serde(rename = "group_id")]
+    pub origin: String,
     pub processing: Option<String>,
     pub pending: u32,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListGroupsResponse {
+pub struct ListOriginsResponse {
     #[serde(default)]
-    pub groups: Vec<GroupInfo>,
+    pub groups: Vec<OriginInfo>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct GroupInfo {
-    pub group_id: String,
+pub struct OriginInfo {
+    #[serde(rename = "group_id")]
+    pub origin: String,
     pub entity_count: Option<u32>,
     pub episode_count: Option<u32>,
     pub last_activity: Option<String>,

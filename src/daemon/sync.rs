@@ -21,7 +21,7 @@ async fn run_once() {
     let opts = SyncOptions {
         full: false,
         agent_filter: None,
-        group_filter: None,
+        origin_filter: None,
         since: None,
         no_llm: false,
         dry_run: false,

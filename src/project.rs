@@ -1,11 +1,11 @@
 use std::path::Path;
 
-/// Detect project name from a directory path.
+/// Detect project origin from a directory path.
 ///
 /// Walks up from `dir` looking for VCS roots (.git) or workspace markers
 /// (Cargo.toml, package.json, etc). Returns the directory name of the
 /// first match, or the leaf directory name as fallback.
-pub fn detect_group_id(dir: &Path) -> Option<String> {
+pub fn detect_origin(dir: &Path) -> Option<String> {
     let markers = [
         ".git",
         "Cargo.toml",

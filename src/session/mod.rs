@@ -37,8 +37,8 @@ pub async fn sync(opts: SyncOptions) -> Result<SyncReport> {
         all_sessions.retain(|s| s.modified_at.is_none_or(|t| t >= cutoff));
     }
 
-    if let Some(ref group) = opts.group_filter {
-        let normalized = group.to_ascii_lowercase();
+    if let Some(ref origin) = opts.origin_filter {
+        let normalized = origin.to_ascii_lowercase();
         all_sessions.retain(|s| {
             s.project_hint
                 .as_deref()
@@ -137,7 +137,7 @@ pub async fn sync(opts: SyncOptions) -> Result<SyncReport> {
             total,
             job.session_ref.agent,
             truncate_id(&job.session_ref.session_id),
-            job.parsed.group_id,
+            job.parsed.origin,
         );
 
         if job.parsed.turns.is_empty() {
@@ -169,7 +169,7 @@ pub async fn sync(opts: SyncOptions) -> Result<SyncReport> {
             &job.session_ref.session_id,
             &job.session_ref.source_path.to_string_lossy(),
             &job.session_ref.fingerprint,
-            &job.parsed.group_id,
+            &job.parsed.origin,
             job.parsed.turns.len(),
         );
     }
@@ -235,7 +235,7 @@ async fn ingest(
             truncate_id(&job.session_ref.session_id)
         ),
         episode_body: summary,
-        group_id: Some(job.parsed.group_id.clone()),
+        origin: Some(job.parsed.origin.clone()),
         source: "text".into(),
         source_description: format!(
             "{} session {}, {} to {}",
@@ -264,14 +264,14 @@ fn truncate_id(id: &str) -> &str {
 /// Run a background sync. Used by the daemon's periodic sync.
 #[allow(dead_code)]
 pub async fn background_sync() {
-    let group = std::env::current_dir()
+    let origin = std::env::current_dir()
         .ok()
-        .and_then(|cwd| crate::project::detect_group_id(&cwd));
+        .and_then(|cwd| crate::project::detect_origin(&cwd));
 
     let opts = SyncOptions {
         full: false,
         agent_filter: None,
-        group_filter: group,
+        origin_filter: origin,
         since: None,
         no_llm: false,
         dry_run: false,

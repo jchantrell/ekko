@@ -17,7 +17,7 @@ pub async fn run() -> Result<()> {
             Some(name) => format!("processing: {name}"),
             None => "idle".into(),
         };
-        println!("{} — {status}, {} pending", group.group_id, group.pending);
+        println!("{} — {status}, {} pending", group.origin, group.pending);
     }
 
     Ok(())

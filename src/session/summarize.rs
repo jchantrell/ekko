@@ -66,13 +66,13 @@ async fn llm_summary(session: &ParsedSession) -> Result<String> {
         "Summarize this AI coding session in 2-3 concise sentences. \
          Focus on what was accomplished, key decisions made, and the outcome.\n\n\
          Agent: {agent}\n\
-         Project: {group}\n\
+         Project: {origin}\n\
          Model: {model}\n\
          Turns: {turns}\n\
          Files touched: {files}\n\n\
          Conversation:\n{conversation}",
         agent = session.agent,
-        group = session.group_id,
+        origin = session.origin,
         model = session.model.as_deref().unwrap_or("unknown"),
         turns = session.turns.len(),
         files = session.files_touched.join(", "),

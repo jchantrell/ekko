@@ -9,7 +9,7 @@ use crate::session::normalize::{Agent, SyncOptions};
 pub async fn run(
     full: bool,
     agent: Option<String>,
-    group: Option<String>,
+    origin: Option<String>,
     all: bool,
     since: Option<String>,
     no_llm: bool,
@@ -31,16 +31,16 @@ pub async fn run(
         })
         .transpose()?;
 
-    let group_filter = if all {
+    let origin_filter = if all {
         None
     } else {
-        group.or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
+        origin.or_else(|| project::detect_origin(&std::env::current_dir().ok()?))
     };
 
     let opts = SyncOptions {
         full,
         agent_filter,
-        group_filter,
+        origin_filter,
         since,
         no_llm,
         dry_run,

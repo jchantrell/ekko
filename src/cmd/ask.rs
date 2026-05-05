@@ -1,27 +1,20 @@
 use anyhow::Result;
 
 use crate::graphiti::{SearchFactsRequest, SearchNodesRequest};
-use crate::project;
 
 use super::client;
 
 pub async fn run(
     query: String,
-    group: Option<String>,
     nodes: bool,
     max_facts: Option<u32>,
     max_nodes: Option<u32>,
 ) -> Result<()> {
     let mut client = client::connect().await?;
 
-    let group_ids = group
-        .or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
-        .map(|g| vec![g]);
-
     let facts_resp = client
         .search_facts(SearchFactsRequest {
             query: query.clone(),
-            group_ids: group_ids.clone(),
             max_facts,
             center_node_uuid: None,
         })
@@ -40,7 +33,6 @@ pub async fn run(
         let nodes_resp = client
             .search_nodes(SearchNodesRequest {
                 query,
-                group_ids,
                 max_nodes,
                 entity_types: None,
             })

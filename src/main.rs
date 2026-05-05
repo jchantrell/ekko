@@ -35,11 +35,11 @@ enum DaemonCommand {
 }
 
 #[derive(Subcommand)]
-enum GroupsCommand {
-    /// Set name/description for a group
+enum OriginsCommand {
+    /// Set name/description for an origin
     Set {
-        /// The group_id to update
-        group_id: String,
+        /// The origin to update
+        origin: String,
 
         /// Display name
         #[arg(long)]
@@ -58,9 +58,9 @@ enum Commands {
         /// The text content to remember
         text: String,
 
-        /// Project group ID (auto-detected from cwd)
+        /// Origin label (auto-detected from cwd)
         #[arg(long)]
-        group: Option<String>,
+        origin: Option<String>,
 
         /// Name for this memory episode
         #[arg(long)]
@@ -75,10 +75,6 @@ enum Commands {
     Ask {
         /// Search query
         query: String,
-
-        /// Project group ID (auto-detected from cwd)
-        #[arg(long)]
-        group: Option<String>,
 
         /// Include entity nodes in results
         #[arg(long)]
@@ -110,10 +106,6 @@ enum Commands {
         /// Optional search query (lists all if omitted)
         query: Option<String>,
 
-        /// Project group ID (auto-detected from cwd)
-        #[arg(long)]
-        group: Option<String>,
-
         /// Filter by entity type
         #[arg(long, name = "type")]
         entity_type: Option<String>,
@@ -125,33 +117,29 @@ enum Commands {
 
     /// List recent memory episodes
     Episodes {
-        /// Project group ID (auto-detected from cwd)
-        #[arg(long)]
-        group: Option<String>,
-
         /// Maximum number of episodes to return
         #[arg(long)]
         max: Option<u32>,
     },
 
-    /// List or manage project groups
-    Groups {
+    /// List or manage memory origins (project sources)
+    Origins {
         #[command(subcommand)]
-        command: Option<GroupsCommand>,
+        command: Option<OriginsCommand>,
 
         /// Include entity/episode counts (slower)
         #[arg(long)]
         stats: bool,
 
-        /// Filter groups by substring
+        /// Filter origins by substring
         #[arg(long)]
         filter: Option<String>,
     },
 
-    /// Wipe all memories for a project group
+    /// Wipe all memories for an origin
     Clear {
-        /// Project name (auto-detected from cwd if omitted)
-        group: Option<String>,
+        /// Origin name (auto-detected from cwd if omitted)
+        origin: Option<String>,
 
         /// Skip confirmation prompt
         #[arg(long, short)]
@@ -196,11 +184,11 @@ enum Commands {
         #[arg(long)]
         agent: Option<String>,
 
-        /// Project to index (auto-detected from cwd)
+        /// Origin to index (auto-detected from cwd)
         #[arg(long, short)]
-        group: Option<String>,
+        origin: Option<String>,
 
-        /// Index all projects instead of just the current one
+        /// Index all origins instead of just the current one
         #[arg(long)]
         all: bool,
 
@@ -227,21 +215,21 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Add { text, group, name, source } => cmd::add::run(text, group, name, source).await,
-        Commands::Ask { query, group, nodes, max_facts, max_nodes } => {
-            cmd::ask::run(query, group, nodes, max_facts, max_nodes).await
+        Commands::Add { text, origin, name, source } => cmd::add::run(text, origin, name, source).await,
+        Commands::Ask { query, nodes, max_facts, max_nodes } => {
+            cmd::ask::run(query, nodes, max_facts, max_nodes).await
         }
         Commands::Show { uuid } => cmd::show::run(uuid).await,
         Commands::Rm { target } => match target {
             RmTarget::Fact { uuid } => cmd::rm::run_fact(uuid).await,
             RmTarget::Episode { uuid } => cmd::rm::run_episode(uuid).await,
         },
-        Commands::Nodes { query, group, entity_type, max } => {
-            cmd::nodes::run(query, group, entity_type, max).await
+        Commands::Nodes { query, entity_type, max } => {
+            cmd::nodes::run(query, entity_type, max).await
         }
-        Commands::Episodes { group, max } => cmd::episodes::run(group, max).await,
-        Commands::Groups { command, stats, filter } => cmd::groups::run(command, stats, filter).await,
-        Commands::Clear { group, yes } => cmd::clear::run(group, yes).await,
+        Commands::Episodes { max } => cmd::episodes::run(max).await,
+        Commands::Origins { command, stats, filter } => cmd::origins::run(command, stats, filter).await,
+        Commands::Clear { origin, yes } => cmd::clear::run(origin, yes).await,
         Commands::Init => cmd::init::run().await,
         Commands::Serve => cmd::serve::run().await,
         Commands::Doctor => cmd::doctor::run().await,
@@ -249,8 +237,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Queue => cmd::queue::run().await,
 
         Commands::Update { check } => cmd::update::run(check).await,
-        Commands::Sync { full, agent, group, all, since, no_llm, dry_run, limit } => {
-            cmd::sync::run(full, agent, group, all, since, no_llm, dry_run, limit).await
+        Commands::Sync { full, agent, origin, all, since, no_llm, dry_run, limit } => {
+            cmd::sync::run(full, agent, origin, all, since, no_llm, dry_run, limit).await
         }
         Commands::Daemon { command } => match command {
             DaemonCommand::Start => cmd::daemon::start().await,

@@ -218,7 +218,7 @@ impl SessionParser for OpenCodeParser {
         }
 
         let project_dir = worktree.as_deref().unwrap_or(&directory);
-        let group_id = project::detect_group_id(std::path::Path::new(project_dir))
+        let origin = project::detect_origin(std::path::Path::new(project_dir))
             .or_else(|| session.project_hint.clone())
             .unwrap_or_else(|| "unknown".into());
 
@@ -228,7 +228,7 @@ impl SessionParser for OpenCodeParser {
         Ok(ParsedSession {
             session_id: session.session_id.clone(),
             agent: Agent::OpenCode,
-            group_id,
+            origin,
             started_at,
             ended_at,
             turns,

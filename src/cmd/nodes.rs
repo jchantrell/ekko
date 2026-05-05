@@ -1,21 +1,15 @@
 use anyhow::Result;
 
 use crate::graphiti::SearchNodesRequest;
-use crate::project;
 
 use super::client;
 
 pub async fn run(
     query: Option<String>,
-    group: Option<String>,
     entity_type: Option<String>,
     max: Option<u32>,
 ) -> Result<()> {
     let mut client = client::connect().await?;
-
-    let group_ids = group
-        .or_else(|| project::detect_group_id(&std::env::current_dir().ok()?))
-        .map(|g| vec![g]);
 
     let query = query.unwrap_or_default();
     let entity_types = entity_type.map(|t| vec![t]);
@@ -23,7 +17,6 @@ pub async fn run(
     let resp = client
         .search_nodes(SearchNodesRequest {
             query,
-            group_ids,
             max_nodes: max,
             entity_types,
         })

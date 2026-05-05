@@ -49,7 +49,7 @@ pub struct SessionRef {
 pub struct ParsedSession {
     pub session_id: String,
     pub agent: Agent,
-    pub group_id: String,
+    pub origin: String,
     pub started_at: DateTime<Utc>,
     pub ended_at: DateTime<Utc>,
     pub turns: Vec<Turn>,
@@ -79,7 +79,7 @@ pub struct ToolCall {
 pub struct SyncOptions {
     pub full: bool,
     pub agent_filter: Option<Agent>,
-    pub group_filter: Option<String>,
+    pub origin_filter: Option<String>,
     pub since: Option<DateTime<Utc>>,
     pub no_llm: bool,
     pub dry_run: bool,

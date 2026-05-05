@@ -90,10 +90,10 @@ impl Client {
         }
     }
 
-    pub async fn list_groups(&mut self, req: ListGroupsRequest) -> Result<ListGroupsResponse> {
+    pub async fn list_origins(&mut self, req: ListOriginsRequest) -> Result<ListOriginsResponse> {
         match self {
-            Self::Direct(c) => c.list_groups(req).await,
-            Self::Daemon(c) => c.list_groups(req).await,
+            Self::Direct(c) => c.list_origins(req).await,
+            Self::Daemon(c) => c.list_origins(req).await,
         }
     }
 
