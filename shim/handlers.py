@@ -2,11 +2,8 @@ import logging
 from datetime import datetime, timezone
 
 from graphiti_core import Graphiti
-from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
 from graphiti_core.edges import EntityEdge
-from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.llm_client.config import LLMConfig
-from graphiti_core.llm_client.openai_client import OpenAIClient
 from graphiti_core.nodes import EpisodeType, EpisodicNode
 from graphiti_core.search.search_config_recipes import NODE_HYBRID_SEARCH_RRF
 from graphiti_core.search.search_filters import SearchFilters
@@ -21,42 +18,99 @@ logger = logging.getLogger("ekko-shim")
 queue = QueueService()
 
 
-async def do_init(params: dict) -> dict:
-    db = params["database"]
-    llm = params["llm"]
-    emb = params["embedder"]
-
+def _build_llm_client(llm: dict):
+    provider = llm.get("provider", "openai")
     model = llm.get("model", "qwen3:8b")
-    llm_config = LLMConfig(
+
+    if provider == "anthropic":
+        from graphiti_core.llm_client.anthropic_client import AnthropicClient
+
+        config = LLMConfig(
+            api_key=llm.get("api_key"),
+            model=model,
+            small_model=model,
+        )
+        return AnthropicClient(config=config)
+
+    from graphiti_core.llm_client.openai_client import OpenAIClient
+
+    config = LLMConfig(
         api_key=llm.get("api_key", "ollama"),
         base_url=llm.get("api_url", "http://localhost:11434/v1"),
         model=model,
         small_model=model,
     )
-    llm_client = OpenAIClient(config=llm_config)
+    return OpenAIClient(config=config)
 
-    emb_config = OpenAIEmbedderConfig(
+
+def _build_embedder(emb: dict):
+    provider = emb.get("provider", "openai")
+
+    if provider == "voyageai":
+        from graphiti_core.embedder.voyage import VoyageAIEmbedder, VoyageAIEmbedderConfig
+
+        config = VoyageAIEmbedderConfig(
+            api_key=emb.get("api_key"),
+            embedding_model=emb.get("model", "voyage-3"),
+            embedding_dim=emb.get("dimensions", 1024),
+        )
+        return VoyageAIEmbedder(config=config)
+
+    from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
+
+    config = OpenAIEmbedderConfig(
         api_key=emb.get("api_key", "ollama"),
         base_url=emb.get("api_url", "http://localhost:11434/v1"),
         embedding_model=emb.get("model", "qwen3-embedding:8b"),
         embedding_dim=emb.get("dimensions", 4096),
     )
-    embedder = OpenAIEmbedder(config=emb_config)
+    return OpenAIEmbedder(config=config)
 
-    cross_encoder = OpenAIRerankerClient(config=llm_config)
 
-    c = Graphiti(
+def _build_cross_encoder(llm: dict):
+    provider = llm.get("provider", "openai")
+
+    # Anthropic has no reranker — let graphiti use its default (OpenAI-based)
+    # only when there's a valid OpenAI-compatible config available
+    if provider == "anthropic":
+        return None
+
+    from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
+
+    model = llm.get("model", "qwen3:8b")
+    config = LLMConfig(
+        api_key=llm.get("api_key", "ollama"),
+        base_url=llm.get("api_url", "http://localhost:11434/v1"),
+        model=model,
+        small_model=model,
+    )
+    return OpenAIRerankerClient(config=config)
+
+
+async def do_init(params: dict) -> dict:
+    db = params["database"]
+    llm = params["llm"]
+    emb = params["embedder"]
+
+    llm_client = _build_llm_client(llm)
+    embedder = _build_embedder(emb)
+    cross_encoder = _build_cross_encoder(llm)
+
+    kwargs = dict(
         uri=db.get("uri", "bolt://localhost:7687"),
         user=db.get("user", "neo4j"),
         password=db.get("password", ""),
         llm_client=llm_client,
         embedder=embedder,
-        cross_encoder=cross_encoder,
     )
+    if cross_encoder is not None:
+        kwargs["cross_encoder"] = cross_encoder
+
+    c = Graphiti(**kwargs)
 
     await c.build_indices_and_constraints()
     drv.set_client(c)
-    logger.info("graphiti client initialized (neo4j)")
+    logger.info("graphiti client initialized (%s/%s)", llm.get("provider", "openai"), emb.get("provider", "openai"))
     return {"message": "ok"}
 
 

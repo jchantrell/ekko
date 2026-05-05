@@ -24,13 +24,19 @@ pub async fn run() -> Result<()> {
     init_python_venv()?;
     write_shim()?;
 
-    if !Config::exists() {
+    let config = if Config::exists() {
+        Config::load()?
+    } else {
         let config = Config::default();
         config.save().context("failed to save config")?;
         println!("\nConfig written to {}", Config::config_path()?.display());
-    }
+        config
+    };
 
-    ensure_ollama_models();
+    let uses_ollama = config.graphiti.llm.api_url.contains("localhost:11434");
+    if uses_ollama {
+        ensure_ollama_models();
+    }
 
     println!("\nRun `ekko doctor` to verify everything is working.");
     Ok(())
@@ -110,10 +116,14 @@ fn init_python_venv() -> Result<()> {
         }
     }
 
+    let config = Config::load()?;
+    let extras = provider_extras(&config);
+    let pkg_spec = format!("graphiti-core[{extras}]");
+
     let pip = venv_dir.join("bin").join("pip");
-    println!("  Installing graphiti-core[neo4j]...");
+    println!("  Installing {pkg_spec}...");
     let output = Command::new(&pip)
-        .args(["install", "--quiet", "graphiti-core[neo4j]"])
+        .args(["install", "--quiet", &pkg_spec])
         .output()
         .context("failed to run pip install")?;
 
@@ -137,6 +147,21 @@ fn init_python_venv() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn provider_extras(config: &Config) -> String {
+    let mut extras = vec!["neo4j".to_string()];
+
+    if config.graphiti.llm.provider == "anthropic" {
+        extras.push("anthropic".to_string());
+    }
+    if config.graphiti.embedder.provider == "voyageai" {
+        extras.push("voyageai".to_string());
+    }
+
+    extras.sort();
+    extras.dedup();
+    extras.join(",")
 }
 
 fn write_shim() -> Result<()> {

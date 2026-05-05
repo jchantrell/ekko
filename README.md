@@ -18,20 +18,62 @@ cargo install --git https://github.com/jchantrell/ekko
 
 - Python 3.10+ (for the graphiti-core shim)
 - Docker or Podman (for Neo4j)
-- [Ollama](https://ollama.com) (LLM and embedding inference)
+- An LLM provider: [Ollama](https://ollama.com) (default), Anthropic, or any OpenAI-compatible API
 
 ## Getting Started
 
 ```bash
-ekko init       # set up Neo4j, Python venv, pull Ollama models
+ekko init       # set up Neo4j, Python venv, install provider deps
 ekko doctor     # verify everything is working
 ekko update     # check for updates
 ```
 
 `ekko init` will:
 1. Start a Neo4j container via Docker/Podman
-2. Create a Python venv with `graphiti-core` installed
-3. Pull the default Ollama models (`qwen3:8b`, `qwen3-embedding:8b`)
+2. Create a Python venv with `graphiti-core` and provider-specific extras
+3. Pull Ollama models if using the default local provider
+
+## Configuration
+
+Config lives at `~/.config/ekko/config.toml`. The default uses Ollama for local inference:
+
+```toml
+[graphiti.llm]
+provider = "openai"           # "openai" (OpenAI-compatible) or "anthropic"
+model = "qwen3:8b"
+api_url = "http://localhost:11434/v1"
+api_key = "ollama"
+
+[graphiti.embedder]
+provider = "openai"           # "openai" (OpenAI-compatible) or "voyageai"
+model = "qwen3-embedding:8b"
+dimensions = 4096
+api_url = "http://localhost:11434/v1"
+api_key = "ollama"
+
+[graphiti.database]
+provider = "neo4j"
+uri = "bolt://localhost:7687"
+user = "neo4j"
+password = "ekko-memory"
+```
+
+### Using Anthropic
+
+```toml
+[graphiti.llm]
+provider = "anthropic"
+model = "claude-haiku-4-5-latest"
+api_key = "sk-ant-..."
+
+[graphiti.embedder]
+provider = "voyageai"
+model = "voyage-3"
+dimensions = 1024
+api_key = "pa-..."
+```
+
+After changing providers, re-run `ekko init` to install the required dependencies.
 
 ## CLI
 
