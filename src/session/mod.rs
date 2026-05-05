@@ -197,7 +197,7 @@ fn discover(parsers: &[Box<dyn SessionParser>]) -> Result<Vec<SessionRef>> {
         }
     }
 
-    all.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    all.sort_by_key(|s| std::cmp::Reverse(s.modified_at));
     Ok(all)
 }
 

@@ -112,10 +112,10 @@ impl EkkoServer {
             )
         });
 
-        if let Some(ref o) = origin {
-            if let Ok(db) = GroupsDb::open() {
-                let _ = db.ensure_exists(o);
-            }
+        if let Some(ref o) = origin
+            && let Ok(db) = GroupsDb::open()
+        {
+            let _ = db.ensure_exists(o);
         }
 
         let mut client = self.client.lock().await;

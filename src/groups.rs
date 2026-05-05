@@ -9,8 +9,6 @@ pub struct GroupMeta {
     pub group_id: String,
     pub name: Option<String>,
     pub description: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
 }
 
 pub struct GroupsDb {
@@ -72,35 +70,15 @@ impl GroupsDb {
         Ok(())
     }
 
-    pub fn get(&self, group_id: &str) -> Result<Option<GroupMeta>> {
-        let mut stmt = self.conn.prepare_cached(
-            "SELECT group_id, name, description, created_at, updated_at FROM groups WHERE group_id = ?",
-        )?;
-        let result = stmt
-            .query_row((group_id,), |row| {
-                Ok(GroupMeta {
-                    group_id: row.get(0)?,
-                    name: row.get(1)?,
-                    description: row.get(2)?,
-                    created_at: row.get(3)?,
-                    updated_at: row.get(4)?,
-                })
-            })
-            .ok();
-        Ok(result)
-    }
-
     pub fn list(&self) -> Result<Vec<GroupMeta>> {
         let mut stmt = self.conn.prepare_cached(
-            "SELECT group_id, name, description, created_at, updated_at FROM groups ORDER BY group_id",
+            "SELECT group_id, name, description FROM groups ORDER BY group_id",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok(GroupMeta {
                 group_id: row.get(0)?,
                 name: row.get(1)?,
                 description: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
             })
         })?;
         let mut groups = Vec::new();
@@ -108,14 +86,6 @@ impl GroupsDb {
             groups.push(row?);
         }
         Ok(groups)
-    }
-
-    pub fn delete(&self, group_id: &str) -> Result<bool> {
-        let affected = self.conn.execute(
-            "DELETE FROM groups WHERE group_id = ?",
-            (group_id,),
-        )?;
-        Ok(affected > 0)
     }
 }
 
@@ -136,10 +106,11 @@ mod tests {
         let db = test_db();
         db.ensure_exists("myproject").unwrap();
 
-        let group = db.get("myproject").unwrap().unwrap();
-        assert_eq!(group.group_id, "myproject");
-        assert_eq!(group.name, None);
-        assert_eq!(group.description, None);
+        let groups = db.list().unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].group_id, "myproject");
+        assert_eq!(groups[0].name, None);
+        assert_eq!(groups[0].description, None);
     }
 
     #[test]
@@ -157,9 +128,9 @@ mod tests {
         let db = test_db();
         db.upsert("ekko", Some("ekko"), Some("Agent memory system")).unwrap();
 
-        let group = db.get("ekko").unwrap().unwrap();
-        assert_eq!(group.name.as_deref(), Some("ekko"));
-        assert_eq!(group.description.as_deref(), Some("Agent memory system"));
+        let groups = db.list().unwrap();
+        assert_eq!(groups[0].name.as_deref(), Some("ekko"));
+        assert_eq!(groups[0].description.as_deref(), Some("Agent memory system"));
     }
 
     #[test]
@@ -168,9 +139,9 @@ mod tests {
         db.upsert("ekko", Some("ekko"), Some("Agent memory")).unwrap();
         db.upsert("ekko", None, None).unwrap();
 
-        let group = db.get("ekko").unwrap().unwrap();
-        assert_eq!(group.name.as_deref(), Some("ekko"));
-        assert_eq!(group.description.as_deref(), Some("Agent memory"));
+        let groups = db.list().unwrap();
+        assert_eq!(groups[0].name.as_deref(), Some("ekko"));
+        assert_eq!(groups[0].description.as_deref(), Some("Agent memory"));
     }
 
     #[test]
@@ -179,9 +150,9 @@ mod tests {
         db.upsert("ekko", Some("ekko"), Some("v1")).unwrap();
         db.upsert("ekko", Some("Ekko"), Some("v2")).unwrap();
 
-        let group = db.get("ekko").unwrap().unwrap();
-        assert_eq!(group.name.as_deref(), Some("Ekko"));
-        assert_eq!(group.description.as_deref(), Some("v2"));
+        let groups = db.list().unwrap();
+        assert_eq!(groups[0].name.as_deref(), Some("Ekko"));
+        assert_eq!(groups[0].description.as_deref(), Some("v2"));
     }
 
     #[test]
@@ -194,25 +165,5 @@ mod tests {
         let groups = db.list().unwrap();
         let ids: Vec<&str> = groups.iter().map(|g| g.group_id.as_str()).collect();
         assert_eq!(ids, vec!["alpha", "middle", "zebra"]);
-    }
-
-    #[test]
-    fn delete_removes_group() {
-        let db = test_db();
-        db.ensure_exists("doomed").unwrap();
-        assert!(db.delete("doomed").unwrap());
-        assert!(db.get("doomed").unwrap().is_none());
-    }
-
-    #[test]
-    fn delete_nonexistent_returns_false() {
-        let db = test_db();
-        assert!(!db.delete("ghost").unwrap());
-    }
-
-    #[test]
-    fn get_nonexistent_returns_none() {
-        let db = test_db();
-        assert!(db.get("nope").unwrap().is_none());
     }
 }
