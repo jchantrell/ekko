@@ -4,12 +4,15 @@ from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger("ekko-shim")
 
+MAX_CONCURRENT = 1
+
 
 class QueueService:
     def __init__(self):
         self._queues: dict[str, asyncio.Queue] = {}
         self._workers: dict[str, bool] = {}
         self._processing: dict[str, str | None] = {}
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
     async def enqueue(
         self, group_id: str, name: str, func: Callable[[], Awaitable[None]]
@@ -28,7 +31,8 @@ class QueueService:
                 name, func = await self._queues[group_id].get()
                 self._processing[group_id] = name
                 try:
-                    await func()
+                    async with self._semaphore:
+                        await func()
                 except Exception:
                     logger.exception("episode processing failed for %s", group_id)
                 finally:
