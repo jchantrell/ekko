@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.13.0](https://github.com/jchantrell/ekko/compare/v0.12.1...v0.13.0) (2026-05-05)
+
+
+### Features
+
+* add anthropic provider support ([809036a](https://github.com/jchantrell/ekko/commit/809036a7e7e38d0a73a68becf8d98b1d2aef5120))
+* add groups discovery and frontmatter ([24cc3cf](https://github.com/jchantrell/ekko/commit/24cc3cff79e56390241da00b06d7431e67e0afdf))
+
+
+### Bug Fixes
+
+* auto-start Neo4j on boot via podman persistence ([a6187ed](https://github.com/jchantrell/ekko/commit/a6187ed1662293056deceeab616ca788618af845))
+* resolve clippy warnings failing CI ([60bda80](https://github.com/jchantrell/ekko/commit/60bda80e9a2fbaeb83a06cf42239390cbf31ce88))
+
 ## [0.12.1](https://github.com/jchantrell/ekko/compare/v0.12.0...v0.12.1) (2026-03-23)
 
 
