@@ -222,6 +222,42 @@ async def do_queue_status(_params: dict) -> dict:
     return {"groups": queue.status()}
 
 
+async def do_list_groups(params: dict) -> dict:
+    include_stats = params.get("include_stats", False)
+
+    async with drv.client.driver.session() as session:
+        result = await session.run(
+            "MATCH (n) WHERE (n:Entity OR n:Episodic) AND n.group_id IS NOT NULL "
+            "RETURN DISTINCT n.group_id AS group_id"
+        )
+        records = [record async for record in result]
+        group_ids = sorted(r["group_id"] for r in records)
+
+    if not include_stats:
+        return {"groups": [{"group_id": gid} for gid in group_ids]}
+
+    groups = []
+    for gid in group_ids:
+        async with drv.client.driver.session() as session:
+            result = await session.run(
+                "MATCH (n) WHERE n.group_id = $gid AND (n:Entity OR n:Episodic) "
+                "RETURN "
+                "  count(CASE WHEN n:Entity THEN 1 END) AS entity_count, "
+                "  count(CASE WHEN n:Episodic THEN 1 END) AS episode_count, "
+                "  max(n.created_at) AS last_activity",
+                gid=gid,
+            )
+            record = await result.single()
+            groups.append({
+                "group_id": gid,
+                "entity_count": record["entity_count"] if record else 0,
+                "episode_count": record["episode_count"] if record else 0,
+                "last_activity": str(record["last_activity"]) if record and record["last_activity"] else None,
+            })
+
+    return {"groups": groups}
+
+
 async def do_shutdown(_params: dict) -> dict:
     if drv.client is not None:
         await drv.client.close()

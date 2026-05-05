@@ -2,6 +2,7 @@ mod cmd;
 mod config;
 mod daemon;
 mod graphiti;
+mod groups;
 mod mcp;
 mod project;
 mod session;
@@ -31,6 +32,23 @@ enum DaemonCommand {
     Stop,
     /// Show daemon status
     Status,
+}
+
+#[derive(Subcommand)]
+enum GroupsCommand {
+    /// Set name/description for a group
+    Set {
+        /// The group_id to update
+        group_id: String,
+
+        /// Display name
+        #[arg(long)]
+        name: Option<String>,
+
+        /// Short description
+        #[arg(long, short)]
+        description: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -114,6 +132,20 @@ enum Commands {
         /// Maximum number of episodes to return
         #[arg(long)]
         max: Option<u32>,
+    },
+
+    /// List or manage project groups
+    Groups {
+        #[command(subcommand)]
+        command: Option<GroupsCommand>,
+
+        /// Include entity/episode counts (slower)
+        #[arg(long)]
+        stats: bool,
+
+        /// Filter groups by substring
+        #[arg(long)]
+        filter: Option<String>,
     },
 
     /// Wipe all memories for a project group
@@ -208,6 +240,7 @@ async fn main() -> anyhow::Result<()> {
             cmd::nodes::run(query, group, entity_type, max).await
         }
         Commands::Episodes { group, max } => cmd::episodes::run(group, max).await,
+        Commands::Groups { command, stats, filter } => cmd::groups::run(command, stats, filter).await,
         Commands::Clear { group, yes } => cmd::clear::run(group, yes).await,
         Commands::Init => cmd::init::run().await,
         Commands::Serve => cmd::serve::run().await,

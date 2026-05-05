@@ -167,6 +167,11 @@ impl DaemonClient {
             .await
     }
 
+    pub async fn list_groups(&mut self, req: ListGroupsRequest) -> Result<ListGroupsResponse> {
+        self.call_json("list_groups", serde_json::to_value(req)?)
+            .await
+    }
+
     pub async fn status(&mut self) -> Result<StatusResponse> {
         self.call_json("status", serde_json::json!({})).await
     }

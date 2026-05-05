@@ -56,6 +56,12 @@ pub struct ClearGraphRequest {
     pub group_ids: Option<Vec<String>>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ListGroupsRequest {
+    #[serde(default)]
+    pub include_stats: bool,
+}
+
 // --- Response types ---
 
 #[derive(Debug, Deserialize)]
@@ -143,6 +149,20 @@ pub struct QueueGroup {
     pub group_id: String,
     pub processing: Option<String>,
     pub pending: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListGroupsResponse {
+    #[serde(default)]
+    pub groups: Vec<GroupInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GroupInfo {
+    pub group_id: String,
+    pub entity_count: Option<u32>,
+    pub episode_count: Option<u32>,
+    pub last_activity: Option<String>,
 }
 
 impl std::fmt::Display for Node {

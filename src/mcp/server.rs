@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::graphiti::{self, *};
+use crate::groups::GroupsDb;
 use crate::project;
 
 /// MCP server exposing ekko's memory tools over STDIO.
@@ -69,6 +70,24 @@ pub struct EpisodesParams {
     pub max_episodes: Option<u32>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GroupsParams {
+    /// Optional substring filter — only return groups matching this.
+    pub filter: Option<String>,
+    /// If true, include entity/episode counts per group (slower).
+    pub include_stats: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SetGroupParams {
+    /// The group_id to set metadata for.
+    pub group_id: String,
+    /// Human-friendly display name for the group.
+    pub name: Option<String>,
+    /// Short description of what this project/group contains.
+    pub description: Option<String>,
+}
+
 #[tool_router]
 impl EkkoServer {
     pub fn new(client: graphiti::Client, group_id: Option<String>) -> Self {
@@ -102,6 +121,12 @@ impl EkkoServer {
                 chrono::Utc::now().format("%Y%m%d-%H%M%S")
             )
         });
+
+        if let Some(ref gid) = group_id {
+            if let Ok(db) = GroupsDb::open() {
+                let _ = db.ensure_exists(gid);
+            }
+        }
 
         let mut client = self.client.lock().await;
         let result = client
@@ -304,6 +329,128 @@ impl EkkoServer {
     }
 
     #[tool(
+        name = "groups",
+        description = "List all known project groups in the knowledge graph. Each group represents a project scope. Returns group IDs with optional name, description, and stats."
+    )]
+    async fn groups(
+        &self,
+        Parameters(params): Parameters<GroupsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let include_stats = params.include_stats.unwrap_or(false);
+
+        let mut client = self.client.lock().await;
+        let graph_groups = client
+            .list_groups(ListGroupsRequest { include_stats })
+            .await
+            .map_err(|e| McpError::internal_error(format!("list_groups failed: {e}"), None))?;
+
+        let local_groups = GroupsDb::open()
+            .and_then(|db| db.list())
+            .unwrap_or_default();
+
+        let local_map: std::collections::HashMap<&str, &crate::groups::GroupMeta> = local_groups
+            .iter()
+            .map(|g| (g.group_id.as_str(), g))
+            .collect();
+
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut output = String::from("## Groups\n\n");
+        let mut count = 0;
+
+        for gi in &graph_groups.groups {
+            if let Some(ref filter) = params.filter {
+                if !gi.group_id.contains(filter.as_str()) {
+                    continue;
+                }
+            }
+            seen.insert(gi.group_id.clone());
+            count += 1;
+
+            let meta = local_map.get(gi.group_id.as_str());
+            let display_name = meta.and_then(|m| m.name.as_deref());
+            let desc = meta.and_then(|m| m.description.as_deref());
+
+            output.push_str(&format!("- **{}**", gi.group_id));
+            if let Some(name) = display_name {
+                if name != gi.group_id {
+                    output.push_str(&format!(" ({name})"));
+                }
+            }
+            if let Some(d) = desc {
+                output.push_str(&format!(" — {d}"));
+            }
+            if include_stats {
+                output.push_str(&format!(
+                    "\n  entities: {}, episodes: {}",
+                    gi.entity_count.unwrap_or(0),
+                    gi.episode_count.unwrap_or(0),
+                ));
+                if let Some(ref last) = gi.last_activity {
+                    output.push_str(&format!(", last_activity: {last}"));
+                }
+            }
+            output.push('\n');
+        }
+
+        for lg in &local_groups {
+            if seen.contains(&lg.group_id) {
+                continue;
+            }
+            if let Some(ref filter) = params.filter {
+                if !lg.group_id.contains(filter.as_str()) {
+                    continue;
+                }
+            }
+            count += 1;
+            output.push_str(&format!("- **{}**", lg.group_id));
+            if let Some(ref name) = lg.name {
+                if name != &lg.group_id {
+                    output.push_str(&format!(" ({name})"));
+                }
+            }
+            if let Some(ref d) = lg.description {
+                output.push_str(&format!(" — {d}"));
+            }
+            output.push_str(" *(no graph data)*\n");
+        }
+
+        if count == 0 {
+            output.push_str("No groups found.\n");
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        name = "set_group",
+        description = "Set the display name and/or description for a project group. This metadata is shown when listing groups."
+    )]
+    async fn set_group(
+        &self,
+        Parameters(params): Parameters<SetGroupParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let db = GroupsDb::open()
+            .map_err(|e| McpError::internal_error(format!("failed to open groups db: {e}"), None))?;
+
+        db.upsert(
+            &params.group_id,
+            params.name.as_deref(),
+            params.description.as_deref(),
+        )
+        .map_err(|e| McpError::internal_error(format!("failed to upsert group: {e}"), None))?;
+
+        let mut msg = format!("Group '{}' updated.", params.group_id);
+        if let Some(ref name) = params.name {
+            msg.push_str(&format!(" name={name}"));
+        }
+        if let Some(ref desc) = params.description {
+            msg.push_str(&format!(" description=\"{desc}\""));
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(msg)]))
+    }
+
+    #[tool(
         name = "status",
         description = "Check ekko's health — is Graphiti reachable? Is the MCP session active? Returns system status for diagnostics."
     )]
@@ -340,7 +487,8 @@ impl ServerHandler for EkkoServer {
                 "ekko provides persistent memory for AI agents via a temporal knowledge graph. \
                  Use remember to store memories, recall to search them, \
                  forget to remove facts, entities to explore the graph, \
-                 episodes to list ingestion history, and status to check health.",
+                 episodes to list ingestion history, groups to list all project scopes, \
+                 set_group to add name/description to a group, and status to check health.",
             )
     }
 }

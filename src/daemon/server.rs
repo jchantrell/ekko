@@ -99,7 +99,7 @@ async fn respawn_shim(state: &DaemonState) -> bool {
 fn is_lightweight(method: &str) -> bool {
     matches!(
         method,
-        "queue_status" | "health" | "status"
+        "queue_status" | "health" | "status" | "list_groups"
     )
 }
 
