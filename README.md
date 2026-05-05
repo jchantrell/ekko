@@ -42,6 +42,9 @@ ekko nodes "search query"                  # search entities
 ekko episodes                              # list recent episodes
 ekko show <uuid>                           # inspect a fact
 ekko rm fact <uuid>                        # delete a fact
+ekko groups                                # list all project scopes
+ekko groups --stats                        # include entity/episode counts
+ekko groups set myproj --name "My Project" --description "Web app backend"
 ekko clear                                 # wipe current project's memory
 ekko clear my-project                      # wipe a specific project's memory
 ekko sync                                  # index agent sessions (last 30 days)
@@ -50,7 +53,7 @@ ekko sync --full                           # index all agent sessions
 
 ## MCP Server
 
-ekko exposes 7 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `queue`, `status`.
+ekko exposes 9 tools over STDIO: `remember`, `recall`, `forget`, `entities`, `episodes`, `groups`, `set_group`, `queue`, `status`.
 
 ### Claude Code
 
@@ -110,6 +113,8 @@ Use ekko for all persistent memory. It's an MCP server backed by a temporal know
 - `forget` — remove incorrect facts by UUID
 - `entities` — explore the knowledge graph (people, technologies, concepts)
 - `episodes` — list memory ingestion history
+- `groups` — list all project scopes (discover what's in memory)
+- `set_group` — set a display name and description for a project scope
 - `queue` — check memory processing queue status
 - `status` — check if the memory system is healthy
 
