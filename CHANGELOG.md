@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.1](https://github.com/jchantrell/ekko/compare/v0.13.0...v0.13.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* daemon respawns shim on any request failure, not just heavy ones ([a635523](https://github.com/jchantrell/ekko/commit/a635523d14701e369ef420f89f07e469a7f0b814))
+* limit queue to 1 concurrent worker for local inference ([60b705d](https://github.com/jchantrell/ekko/commit/60b705d56febad61f42f336d97543df6a2662744))
+* single graphiti group for unified entity resolution ([a68d8bf](https://github.com/jchantrell/ekko/commit/a68d8bff04b6e291b6954e235949cb6919854711))
+
 ## [0.13.0](https://github.com/jchantrell/ekko/compare/v0.12.1...v0.13.0) (2026-05-05)
 
 
