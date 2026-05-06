@@ -1,59 +1,138 @@
-import asyncio
+import json
 import logging
-from collections.abc import Awaitable, Callable
+import sqlite3
+import asyncio
+from datetime import datetime, timezone
+from pathlib import Path
 
 logger = logging.getLogger("ekko-shim")
 
-MAX_CONCURRENT = 1
+DB_PATH = Path(__file__).resolve().parent.parent / "queue.db"
 
 
 class QueueService:
     def __init__(self):
-        self._queues: dict[str, asyncio.Queue] = {}
-        self._workers: dict[str, bool] = {}
-        self._processing: dict[str, str | None] = {}
-        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+        self._conn = sqlite3.connect(str(DB_PATH))
+        self._conn.row_factory = sqlite3.Row
+        self._migrate()
+        self._processing: str | None = None
+        self._processing_origin: str | None = None
+        self._worker_task: asyncio.Task | None = None
 
-    async def enqueue(
-        self, group_id: str, name: str, func: Callable[[], Awaitable[None]]
-    ) -> int:
-        if group_id not in self._queues:
-            self._queues[group_id] = asyncio.Queue()
-        await self._queues[group_id].put((name, func))
-        if not self._workers.get(group_id, False):
-            asyncio.create_task(self._worker(group_id))
-        return self._queues[group_id].qsize()
+    def _migrate(self):
+        self._conn.executescript(
+            "CREATE TABLE IF NOT EXISTS queue ("
+            "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  origin TEXT NOT NULL,"
+            "  name TEXT NOT NULL,"
+            "  params TEXT NOT NULL,"
+            "  created_at TEXT NOT NULL,"
+            "  status TEXT NOT NULL DEFAULT 'pending'"
+            ");"
+            "UPDATE queue SET status = 'pending' WHERE status = 'processing';"
+        )
+        self._conn.commit()
 
-    async def _worker(self, group_id: str) -> None:
-        self._workers[group_id] = True
+    def enqueue(self, origin: str, name: str, params: dict) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            "INSERT INTO queue (origin, name, params, created_at) VALUES (?, ?, ?, ?)",
+            (origin, name, json.dumps(params), now),
+        )
+        self._conn.commit()
+        self._ensure_worker()
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM queue WHERE status = 'pending'"
+        ).fetchone()[0]
+        return count
+
+    def _ensure_worker(self):
+        if self._worker_task is None or self._worker_task.done():
+            self._worker_task = asyncio.create_task(self._worker())
+
+    def start_if_pending(self):
+        count = self._conn.execute(
+            "SELECT COUNT(*) FROM queue WHERE status = 'pending'"
+        ).fetchone()[0]
+        if count > 0:
+            logger.info("resuming %d pending episodes from previous session", count)
+            self._ensure_worker()
+
+    async def _worker(self):
+        while True:
+            row = self._conn.execute(
+                "SELECT * FROM queue WHERE status = 'pending' ORDER BY id LIMIT 1"
+            ).fetchone()
+            if not row:
+                break
+
+            self._conn.execute(
+                "UPDATE queue SET status = 'processing' WHERE id = ?", (row["id"],)
+            )
+            self._conn.commit()
+            self._processing = row["name"]
+            self._processing_origin = row["origin"]
+
+            try:
+                params = json.loads(row["params"])
+                await self._process(params)
+                self._conn.execute("DELETE FROM queue WHERE id = ?", (row["id"],))
+                self._conn.commit()
+                logger.info("episode processed: %s (%s)", row["name"], row["origin"])
+            except Exception:
+                logger.exception("episode failed: %s (%s)", row["name"], row["origin"])
+                self._conn.execute(
+                    "UPDATE queue SET status = 'failed' WHERE id = ?", (row["id"],)
+                )
+                self._conn.commit()
+            finally:
+                self._processing = None
+                self._processing_origin = None
+
+    async def _process(self, params: dict):
+        import driver as drv
+        from graphiti_core.nodes import EpisodeType
+
         try:
-            while True:
-                name, func = await self._queues[group_id].get()
-                self._processing[group_id] = name
-                try:
-                    async with self._semaphore:
-                        await func()
-                except Exception:
-                    logger.exception("episode processing failed for %s", group_id)
-                finally:
-                    self._processing[group_id] = None
-                    self._queues[group_id].task_done()
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self._workers[group_id] = False
-            self._processing.pop(group_id, None)
+            episode_type = EpisodeType[params["source"].lower()]
+        except (KeyError, AttributeError):
+            episode_type = EpisodeType.text
+
+        ref_time = datetime.fromisoformat(params["reference_time"])
+
+        await drv.client.add_episode(
+            name=params["name"],
+            episode_body=params["content"],
+            source_description=params.get("source_description", ""),
+            source=episode_type,
+            group_id=params["group_id"],
+            reference_time=ref_time,
+            uuid=params.get("uuid"),
+        )
 
     def status(self) -> list[dict]:
-        groups = set(self._queues.keys()) | set(self._processing.keys())
+        rows = self._conn.execute(
+            "SELECT origin, "
+            "  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending "
+            "FROM queue WHERE status IN ('pending', 'processing') "
+            "GROUP BY origin"
+        ).fetchall()
+
         result = []
-        for gid in sorted(groups):
-            pending = self._queues[gid].qsize() if gid in self._queues else 0
-            processing = self._processing.get(gid)
-            if pending > 0 or processing is not None:
-                result.append({
-                    "group_id": gid,
-                    "processing": processing,
-                    "pending": pending,
-                })
-        return result
+        for row in rows:
+            result.append({
+                "group_id": row["origin"],
+                "processing": self._processing if row["origin"] == self._processing_origin else None,
+                "pending": row["pending"],
+            })
+
+        if self._processing_origin and not any(
+            r["group_id"] == self._processing_origin for r in result
+        ):
+            result.append({
+                "group_id": self._processing_origin,
+                "processing": self._processing,
+                "pending": 0,
+            })
+
+        return sorted(result, key=lambda r: r["group_id"])

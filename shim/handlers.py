@@ -110,6 +110,7 @@ async def do_init(params: dict) -> dict:
 
     await c.build_indices_and_constraints()
     drv.set_client(c)
+    queue.start_if_pending()
     logger.info("graphiti client initialized (%s/%s)", llm.get("provider", "openai"), emb.get("provider", "openai"))
     return {"message": "ok"}
 
@@ -132,13 +133,12 @@ async def do_add_memory(params: dict) -> dict:
     else:
         ref_time = datetime.now(timezone.utc)
 
-    try:
-        episode_type = EpisodeType[source.lower()]
-    except (KeyError, AttributeError):
-        episode_type = EpisodeType.text
+    if sync:
+        try:
+            episode_type = EpisodeType[source.lower()]
+        except (KeyError, AttributeError):
+            episode_type = EpisodeType.text
 
-    async def process():
-        logger.info("processing episode %s for group %s", uuid, group_id)
         await drv.client.add_episode(
             name=name,
             episode_body=content,
@@ -148,13 +148,17 @@ async def do_add_memory(params: dict) -> dict:
             reference_time=ref_time,
             uuid=uuid,
         )
-        logger.info("episode processed for group %s", group_id)
-
-    if sync:
-        await process()
         return {"message": f"Episode '{name}' processed in group '{group_id}'"}
 
-    await queue.enqueue(group_id, name, process)
+    queue.enqueue(group_id, name, {
+        "name": name,
+        "content": content,
+        "source_description": source_description,
+        "source": source,
+        "group_id": group_id,
+        "reference_time": ref_time.isoformat(),
+        "uuid": uuid,
+    })
     return {"message": f"Episode '{name}' queued for processing in group '{group_id}'"}
 
 

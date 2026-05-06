@@ -27,6 +27,14 @@ pub fn remove_socket() {
     }
 }
 
+/// Remove stale socket/pid files if the daemon process is dead.
+pub fn cleanup_stale() {
+    if running_pid().is_none() {
+        remove_socket();
+        remove_pid();
+    }
+}
+
 /// Read the PID from the PID file, if it exists and the process is alive.
 pub fn running_pid() -> Option<u32> {
     let path = Config::pid_path().ok()?;
