@@ -92,6 +92,7 @@ class QueueService:
     async def _process(self, params: dict):
         import driver as drv
         from graphiti_core.nodes import EpisodeType
+        from handlers import GRAPHITI_GROUP
 
         try:
             episode_type = EpisodeType[params["source"].lower()]
@@ -105,7 +106,7 @@ class QueueService:
             episode_body=params["content"],
             source_description=params.get("source_description", ""),
             source=episode_type,
-            group_id=params["group_id"],
+            group_id=GRAPHITI_GROUP,
             reference_time=ref_time,
             uuid=params.get("uuid"),
         )

@@ -115,8 +115,11 @@ async def do_init(params: dict) -> dict:
     return {"message": "ok"}
 
 
+GRAPHITI_GROUP = "ekko"
+
+
 async def do_add_memory(params: dict) -> dict:
-    group_id = params.get("group_id", "default")
+    origin = params.get("group_id", "default")
     name = params.get("name", "")
     content = params.get("episode_body", "")
     source = params.get("source", "text")
@@ -144,22 +147,21 @@ async def do_add_memory(params: dict) -> dict:
             episode_body=content,
             source_description=source_description,
             source=episode_type,
-            group_id=group_id,
+            group_id=GRAPHITI_GROUP,
             reference_time=ref_time,
             uuid=uuid,
         )
-        return {"message": f"Episode '{name}' processed in group '{group_id}'"}
+        return {"message": f"Episode '{name}' processed (origin: {origin})"}
 
-    queue.enqueue(group_id, name, {
+    queue.enqueue(origin, name, {
         "name": name,
         "content": content,
         "source_description": source_description,
         "source": source,
-        "group_id": group_id,
         "reference_time": ref_time.isoformat(),
         "uuid": uuid,
     })
-    return {"message": f"Episode '{name}' queued for processing in group '{group_id}'"}
+    return {"message": f"Episode '{name}' queued (origin: {origin})"}
 
 
 async def do_search_facts(params: dict) -> dict:
@@ -250,12 +252,9 @@ async def do_delete_episode(params: dict) -> dict:
     return {"message": f"Episode {params['uuid']} deleted"}
 
 
-async def do_clear_graph(params: dict) -> dict:
-    origins = params.get("group_ids") or []
-    if not origins:
-        return {"message": "No origins specified"}
-    await clear_data(drv.client.driver, group_ids=origins)
-    return {"message": f"Graph cleared for origins: {', '.join(origins)}"}
+async def do_clear_graph(_params: dict) -> dict:
+    await clear_data(drv.client.driver, group_ids=[GRAPHITI_GROUP])
+    return {"message": "Graph cleared"}
 
 
 async def do_health(_params: dict) -> dict:
