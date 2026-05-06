@@ -95,14 +95,6 @@ async fn respawn_shim(state: &DaemonState) -> bool {
     }
 }
 
-/// Methods that are fast and can use try_lock instead of blocking.
-fn is_lightweight(method: &str) -> bool {
-    matches!(
-        method,
-        "queue_status" | "health" | "status" | "list_groups"
-    )
-}
-
 async fn handle_connection(
     stream: tokio::net::UnixStream,
     state: std::sync::Arc<DaemonState>,
@@ -163,52 +155,25 @@ async fn handle_connection(
             continue;
         }
 
-        let result = if is_lightweight(method) {
-            // Non-blocking: try to get the lock, return shim-busy if held
-            match state.client.try_lock() {
-                Ok(mut c) => c.call_raw(method, params).await,
-                Err(_) => {
-                    // Shim is busy with another request — return a synthetic response
-                    let resp = match method {
-                        "queue_status" => serde_json::json!({
-                            "id": req_id,
-                            "result": {"groups": [], "daemon_busy": true}
-                        }),
-                        "health" => serde_json::json!({
-                            "id": req_id,
-                            "result": {"status": "busy"}
-                        }),
-                        _ => serde_json::json!({
-                            "id": req_id,
-                            "result": {"status": "busy", "message": "shim is processing another request"}
-                        }),
-                    };
-                    let _ = write_response(&mut writer, &resp).await;
-                    continue;
-                }
-            }
-        } else {
-            // Blocking: wait for the lock
-            state.busy.store(true, Ordering::Relaxed);
-            let result = {
-                let mut c = state.client.lock().await;
-                c.call_raw(method, params.clone()).await
-            };
-            state.busy.store(false, Ordering::Relaxed);
+        state.busy.store(true, Ordering::Relaxed);
+        let result = {
+            let mut c = state.client.lock().await;
+            c.call_raw(method, params.clone()).await
+        };
+        state.busy.store(false, Ordering::Relaxed);
 
-            match result {
-                Ok(val) => Ok(val),
-                Err(e) if e.to_string().contains("shim") || e.to_string().contains("stdin") => {
-                    eprintln!("shim appears dead ({e}), attempting respawn...");
-                    if respawn_shim(&state).await {
-                        let mut c = state.client.lock().await;
-                        c.call_raw(method, params).await
-                    } else {
-                        Err(e)
-                    }
+        let result = match result {
+            Ok(val) => Ok(val),
+            Err(e) if e.to_string().contains("shim") || e.to_string().contains("stdin") => {
+                eprintln!("shim appears dead ({e}), attempting respawn...");
+                if respawn_shim(&state).await {
+                    let mut c = state.client.lock().await;
+                    c.call_raw(method, params).await
+                } else {
+                    Err(e)
                 }
-                Err(e) => Err(e),
             }
+            Err(e) => Err(e),
         };
 
         let resp = match result {
